@@ -2,8 +2,12 @@
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Expresso Silva</title>
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/713/713311.png">
+    
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         @keyframes fade-in { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
@@ -17,15 +21,26 @@
     <div class="flex justify-center min-h-screen">
         <div class="w-full max-w-md bg-[#fafafa] min-h-screen flex flex-col shadow-2xl relative border-x border-gray-200">
             
+            <div id="install-popup" class="hidden fixed top-4 left-4 right-4 bg-blue-900 text-white p-4 rounded-2xl shadow-2xl z-[100] animate-fade-in border border-blue-400">
+                <div class="flex items-center gap-3">
+                    <div class="text-2xl">📲</div>
+                    <div class="flex-1">
+                        <p class="text-xs font-bold">Instalar Expresso Silva</p>
+                        <p class="text-[10px] opacity-80">Adicione à tela inicial para acesso rápido.</p>
+                    </div>
+                    <button onclick="hideInstall()" class="bg-white/20 px-3 py-1 rounded-lg text-xs font-bold">OK</button>
+                </div>
+            </div>
+
             <header class="bg-white p-5 shadow-sm sticky top-0 z-40 border-b border-gray-100">
                 <div class="flex justify-between items-center">
                     <div class="flex items-center gap-2">
                         <div class="bg-white p-2 rounded-full border-2 border-blue-900 shadow-md text-blue-800">
-                            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="7" cy="18" r="3"></circle><circle cx="17" cy="18" r="3"></circle><path d="M10 18h4"></path><path d="M12 12l2 3h5l-2-7h-3l-2 4z"></path></svg>
+                            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="7" cy="18" r="3"></circle><circle cx="17" cy="18" r="3"></circle><path d="M10 18h4"></path><path d="M12 12l2 3h5l-2-7h-3l-2 4z"></path></svg>
                         </div>
                         <div class="flex flex-col">
-                            <span class="text-xl font-black italic tracking-tighter text-blue-900 leading-none">EXPRESSO</span>
-                            <span class="text-lg font-bold text-red-600 leading-none tracking-wide">SILVA</span>
+                            <span class="text-xl font-black italic text-blue-900 leading-none">EXPRESSO</span>
+                            <span class="text-lg font-bold text-red-600 leading-none">SILVA</span>
                         </div>
                     </div>
                     <div class="flex items-center gap-2">
@@ -56,73 +71,47 @@
     </div>
 
     <script>
-        const BASE_LAT = -19.8967; 
-        const BASE_LON = -43.9433;
-        const PRECO_KM_NORMAL = 2.00;
-        const PRECO_KM_LONGO = 1.40; 
-        const PRECO_MINIMO = 10.00;
-        
+        const BASE_LAT = -19.8967; const BASE_LON = -43.9433;
+        const PRECO_KM_NORMAL = 2.00; const PRECO_KM_LONGO = 1.40; const PRECO_MINIMO = 10.00;
         const PRICE_TABLE = {"aarao reis": 25, "adelaide": 18, "aeroporto": 22, "aparecida": 10, "bom jesus": 10, "cachoeirinha": 10, "centro": 20, "savassi": 20, "lourdes": 15};
 
         let deliveryObject = "";
-        let stops = [
-            { type: 'pickup', address: '', contact: '', price: 0, loading: false },
-            { type: 'delivery', address: '', contact: '', price: 0, loading: false }
-        ];
+        let stops = [{ type: 'pickup', address: '', contact: '', price: 0, loading: false }, { type: 'delivery', address: '', contact: '', price: 0, loading: false }];
+
+        function hideInstall() { document.getElementById('install-popup').classList.add('hidden'); }
+        setTimeout(() => { if(!window.navigator.standalone) document.getElementById('install-popup').classList.remove('hidden'); }, 3000);
 
         function getDistanceFromLatLonInKm(lat1, lon1, lat2, lon2) {
-            var R = 6371; 
-            var dLat = (lat2-lat1) * Math.PI / 180;
-            var dLon = (lon2-lon1) * Math.PI / 180;
+            var R = 6371; var dLat = (lat2-lat1) * Math.PI / 180; var dLon = (lon2-lon1) * Math.PI / 180;
             var a = Math.sin(dLat/2) * Math.sin(dLat/2) + Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLon/2) * Math.sin(dLon/2); 
-            var c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a)); 
-            return R * c;
+            return R * (2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a)));
         }
 
         async function updatePrice(index) {
             const addr = document.getElementById(`addr-${index}`).value;
             if (!addr || addr.length < 5) return;
-            stops[index].loading = true;
-            renderTab('quote');
-
+            stops[index].loading = true; renderTab('quote');
             let foundPrice = false;
             for (const [bairro, p] of Object.entries(PRICE_TABLE)) {
-                if (addr.toLowerCase().includes(bairro)) {
-                    stops[index].price = p;
-                    foundPrice = true;
-                    break;
-                }
+                if (addr.toLowerCase().includes(bairro)) { stops[index].price = p; foundPrice = true; break; }
             }
-
             if (!foundPrice) {
                 try {
                     const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(addr + " Minas Gerais")}`);
                     const data = await response.json();
                     if (data && data.length > 0) {
                         const dist = getDistanceFromLatLonInKm(BASE_LAT, BASE_LON, data[0].lat, data[0].lon);
-                        if (dist > 60) {
-                            stops[index].price = (dist * 2) * PRECO_KM_LONGO;
-                        } else {
-                            stops[index].price = Math.max(PRECO_MINIMO, PRECO_MINIMO + (dist * PRECO_KM_NORMAL));
-                        }
+                        stops[index].price = dist > 60 ? (dist * 2) * PRECO_KM_LONGO : Math.max(PRECO_MINIMO, PRECO_MINIMO + (dist * PRECO_KM_NORMAL));
                     } else { stops[index].price = 20; }
                 } catch (e) { stops[index].price = 20; }
             }
-            stops[index].loading = false;
-            stops[index].address = addr;
-            renderTab('quote');
+            stops[index].loading = false; stops[index].address = addr; renderTab('quote');
         }
 
         function renderTab(tab) {
             const main = document.getElementById('main-content');
-            const btnAbout = document.getElementById('btn-about');
-            const btnQuote = document.getElementById('btn-quote');
-            const btnFeedback = document.getElementById('btn-feedback');
-
-            [btnAbout, btnFeedback].forEach(b => {
-                b.classList.replace('text-blue-700', 'text-gray-300');
-                b.classList.remove('scale-110');
-            });
+            const btnAbout = document.getElementById('btn-about'); const btnQuote = document.getElementById('btn-quote'); const btnFeedback = document.getElementById('btn-feedback');
+            [btnAbout, btnFeedback].forEach(b => { b.classList.replace('text-blue-700', 'text-gray-300'); b.classList.remove('scale-110'); });
             btnQuote.classList.replace('bg-blue-800', 'bg-gray-400');
 
             if (tab === 'quote') {
@@ -131,16 +120,16 @@
                 let stopsHTML = stops.map((s, i) => `
                     <div class="bg-white rounded-2xl shadow-sm border p-4 mb-4 border-gray-100 animate-fade-in">
                         <div class="flex justify-between mb-2">
-                            <span class="text-[10px] font-black uppercase px-2 py-1 rounded ${s.type==='pickup'?'bg-blue-100 text-blue-700':'bg-green-100 text-green-700'}">${s.type==='pickup'?'Coleta':'Entrega'}</span>
-                            ${i > 1 ? `<button onclick="stops.splice(${i},1);renderTab('quote')" class="text-red-400 text-xs font-bold">Remover</button>` : ''}
+                            <span class="text-[10px] font-black uppercase px-2 py-1 rounded ${s.type==='pickup'?'bg-blue-100 text-blue-700':'bg-green-100 text-green-700'}">${s.type==='pickup'?'📍 Ponto de Coleta':'🏁 Ponto de Entrega'}</span>
+                            ${stops.length > 2 ? `<button onclick="stops.splice(${i},1);renderTab('quote')" class="text-red-400 text-xs font-bold">Remover</button>` : ''}
                         </div>
                         <div class="relative">
-                            <input id="addr-${i}" onblur="updatePrice(${i})" value="${s.address}" type="text" placeholder="Rua, número e bairro" class="w-full p-3 border border-gray-100 rounded-xl mb-3 text-sm bg-gray-50">
+                            <input id="addr-${i}" onblur="updatePrice(${i})" value="${s.address}" type="text" placeholder="Rua, número e bairro" class="w-full p-3 border border-gray-100 rounded-xl mb-3 text-sm bg-gray-50 outline-none focus:ring-1 focus:ring-blue-400">
                             ${s.loading ? '<div class="absolute right-3 top-3"><div class="loader"></div></div>' : ''}
                         </div>
                         <div class="flex gap-2">
                             <input id="cont-${i}" onchange="stops[${i}].contact=this.value" value="${s.contact}" type="text" placeholder="Referência" class="w-1/2 p-2.5 border border-gray-100 rounded-xl text-xs bg-gray-50">
-                            <div class="w-1/2 flex items-center justify-center font-bold text-green-600 bg-gray-50 rounded-xl text-sm italic text-center">R$ ${s.price.toFixed(2).replace('.', ',')}</div>
+                            <div class="w-1/2 flex items-center justify-center font-bold text-green-600 bg-gray-50 rounded-xl text-sm italic">R$ ${s.price.toFixed(2).replace('.', ',')}</div>
                         </div>
                     </div>
                 `).join('');
@@ -155,39 +144,15 @@
                         <input id="objInput" onchange="deliveryObject=this.value" value="${deliveryObject}" type="text" placeholder="Ex: Marmitas, Peças..." class="w-full p-3 border border-gray-200 rounded-xl text-sm bg-gray-50">
                     </div>
                     ${stopsHTML}
-                    <button onclick="stops.push({type:'delivery',address:'',contact:'',price:0,loading:false});renderTab('quote')" class="w-full py-4 border-2 border-dashed border-gray-300 rounded-2xl text-gray-400 font-bold mb-8">+ Adicionar Destino</button>
-                    <button onclick="let total = stops.reduce((acc, s) => acc + s.price, 0); let msg = '*NOVO PEDIDO - EXPRESSO SILVA*\\n📦 *O que:* '+deliveryObject+'\\n\\n'; stops.forEach((s, i) => { msg += (s.type === 'pickup' ? '📍 COLETA' : '🏁 ENTREGA') + '\\n🏠 *End:* ' + s.address + '\\n👤 *Ref:* ' + s.contact + '\\n\\n'; }); msg += '💰 *TOTAL: R$ ' + total.toFixed(2).replace('.', ',') + '*'; window.open('https://wa.me/553134225426?text=' + encodeURIComponent(msg))" class="w-full bg-green-600 text-white font-black py-4 rounded-2xl shadow-xl text-lg flex items-center justify-center gap-2">PEDIR NO WHATSAPP</button>
+                    <div class="flex gap-2 mb-8">
+                        <button onclick="stops.push({type:'pickup',address:'',contact:'',price:0,loading:false});renderTab('quote')" class="w-1/2 py-3 border-2 border-dashed border-blue-200 rounded-2xl text-blue-500 font-bold text-xs hover:bg-blue-50 transition-all">+ Coleta</button>
+                        <button onclick="stops.push({type:'delivery',address:'',contact:'',price:0,loading:false});renderTab('quote')" class="w-1/2 py-3 border-2 border-dashed border-green-200 rounded-2xl text-green-500 font-bold text-xs hover:bg-green-50 transition-all">+ Entrega</button>
+                    </div>
+                    <button onclick="let total = stops.reduce((acc, s) => acc + s.price, 0); let msg = '*NOVO PEDIDO - EXPRESSO SILVA*\\n📦 *O que:* '+deliveryObject+'\\n\\n'; stops.forEach((s, i) => { msg += (s.type === 'pickup' ? '📍 COLETA' : '🏁 ENTREGA') + '\\n🏠 *End:* ' + s.address + '\\n👤 *Ref:* ' + s.contact + '\\n\\n'; }); msg += '💰 *TOTAL: R$ ' + total.toFixed(2).replace('.', ',') + '*'; window.open('https://wa.me/553134225426?text=' + encodeURIComponent(msg))" class="w-full bg-green-600 text-white font-black py-4 rounded-2xl shadow-xl text-lg flex items-center justify-center gap-2 active:scale-95 transition-all">PEDIR NO WHATSAPP</button>
                 `;
             } else if (tab === 'about') {
                 btnAbout.classList.add('text-blue-700', 'scale-110');
-                main.innerHTML = `
-                    <div class="space-y-6 animate-fade-in pb-10">
-                        <div class="bg-blue-900 rounded-3xl p-6 text-white shadow-2xl relative overflow-hidden">
-                            <h2 class="text-3xl font-black italic mb-2">Expresso Silva</h2>
-                            <p class="text-blue-200 text-sm leading-relaxed font-medium">Logística inteligente para quem tem pressa.</p>
-                            <div class="mt-4 flex items-center gap-2 text-xs font-bold bg-white/10 p-2 rounded-lg w-fit">📍 Rua Paranaíba, 337 - Aparecida</div>
-                        </div>
-                        <div class="grid grid-cols-2 gap-4">
-                            <div class="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 text-center">
-                                <div class="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-2 text-xl">🚚</div>
-                                <p class="text-xs font-black text-gray-800">Cobertura</p><p class="text-[10px] text-gray-400">BH e Região</p>
-                            </div>
-                            <div class="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 text-center">
-                                <div class="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-2 text-xl">🕒</div>
-                                <p class="text-xs font-black text-gray-800">Agilidade</p><p class="text-[10px] text-gray-400">Entregas Urgentes</p>
-                            </div>
-                        </div>
-                        <div class="bg-white p-6 rounded-3xl shadow-sm border border-gray-100">
-                            <h3 class="text-lg font-black text-gray-800 mb-6 flex items-center gap-2">💼 Nossos Serviços</h3>
-                            <div class="grid gap-3">
-                                <div class="flex items-center gap-3 bg-gray-50 p-4 rounded-2xl border border-gray-100 text-sm font-bold">📦 Coletas e entregas em geral</div>
-                                <div class="flex items-center gap-3 bg-gray-50 p-4 rounded-2xl border border-gray-100 text-sm font-bold">🏛️ Serviços bancários e cartórios</div>
-                                <div class="flex items-center gap-3 bg-gray-50 p-4 rounded-2xl border border-gray-100 text-sm font-bold">⚡ Encomendas urgentes</div>
-                            </div>
-                        </div>
-                        <div class="bg-gray-800 p-6 rounded-3xl text-white text-center"><p class="text-xs opacity-60 uppercase font-bold mb-2">Central de Atendimento</p><p class="text-xl font-black">(31) 3422-5426</p></div>
-                    </div>
-                `;
+                main.innerHTML = `<div class="space-y-6 animate-fade-in pb-10"><div class="bg-blue-900 rounded-3xl p-6 text-white shadow-2xl relative overflow-hidden"><h2 class="text-3xl font-black italic mb-2">Expresso Silva</h2><p class="text-blue-200 text-sm font-medium">Logística inteligente para quem tem pressa.</p><div class="mt-4 flex items-center gap-2 text-xs font-bold bg-white/10 p-2 rounded-lg w-fit">📍 Rua Paranaíba, 337 - Aparecida</div></div><div class="grid grid-cols-2 gap-4"><div class="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 text-center"><div class="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-2 text-xl">🚚</div><p class="text-xs font-black text-gray-800">Cobertura</p><p class="text-[10px] text-gray-400">BH e Região</p></div><div class="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 text-center"><div class="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-2 text-xl">🕒</div><p class="text-xs font-black text-gray-800">Agilidade</p><p class="text-[10px] text-gray-400">Entregas Urgentes</p></div></div><div class="bg-white p-6 rounded-3xl shadow-sm border border-gray-100"><h3 class="text-lg font-black text-gray-800 mb-6 flex items-center gap-2">💼 Nossos Serviços</h3><div class="grid gap-3"><div class="flex items-center gap-3 bg-gray-50 p-4 rounded-2xl border border-gray-100 text-sm font-bold">📦 Coletas e entregas em geral</div><div class="flex items-center gap-3 bg-gray-50 p-4 rounded-2xl border border-gray-100 text-sm font-bold">🏛️ Serviços bancários e cartórios</div><div class="flex items-center gap-3 bg-gray-50 p-4 rounded-2xl border border-gray-100 text-sm font-bold">⚡ Encomendas urgentes</div></div></div><div class="bg-gray-800 p-6 rounded-3xl text-white text-center"><p class="text-xs opacity-60 uppercase font-bold mb-2">Central de Atendimento</p><p class="text-xl font-black">(31) 3422-5426</p></div></div>`;
             } else if (tab === 'feedback') {
                 btnFeedback.classList.add('text-blue-700', 'scale-110');
                 main.innerHTML = `<div class="text-center p-10 bg-white rounded-3xl border border-gray-100 animate-fade-in"><div class="text-4xl mb-4">⭐</div><h2 class="text-2xl font-black text-gray-800">Sua Opinião</h2><p class="text-sm text-gray-500 mt-2">Fale conosco pelo WhatsApp!</p></div>`;
