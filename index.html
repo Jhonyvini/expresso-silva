@@ -99,7 +99,7 @@
             discountApplied = 0;
             const code = couponCode.toUpperCase().trim();
 
-            if (code === "SILVA10") {
+            if (code === "PRIMEIRAVEZ") {
                 if (totalSemDesconto <= 30) {
                     discountApplied = totalSemDesconto * 0.10;
                 } else if (totalSemDesconto <= 80) {
@@ -107,6 +107,8 @@
                 } else {
                     discountApplied = 10.00;
                 }
+            } else if (code === "DIADASKIDS") {
+                discountApplied = totalSemDesconto * 0.10;
             }
         }
 
@@ -167,7 +169,7 @@
 
                     <div class="bg-white rounded-2xl shadow-sm border p-4 mb-4 border-gray-100">
                         <label class="block text-xs font-black text-gray-400 mb-2 uppercase tracking-tighter">🏷️ Cupom de Desconto</label>
-                        <input id="couponInput" oninput="couponCode=this.value; applyCouponLogic(); updateDisplayOnly()" value="${couponCode}" type="text" placeholder="Código do cupom" class="w-full p-2.5 border border-gray-200 rounded-xl text-sm bg-gray-50 outline-none uppercase font-bold text-blue-800">
+                        <input id="couponInput" oninput="couponCode=this.value; applyCouponLogic(); updateDisplayOnly(); validateButton()" value="${couponCode}" type="text" placeholder="Código: PRIMEIRAVEZ" class="w-full p-2.5 border border-gray-200 rounded-xl text-sm bg-gray-50 outline-none uppercase font-bold text-blue-800">
                     </div>
 
                     <div class="bg-white rounded-2xl shadow-sm border p-4 mb-6 border-gray-100">
@@ -179,58 +181,4 @@
                     
                     <div class="flex gap-2 mb-8">
                         <button onclick="stops.push({type:'pickup',address:'',contact:'',price:0,loading:false});renderTab('quote')" class="w-1/2 py-3 border-2 border-dashed border-blue-200 rounded-2xl text-blue-500 font-bold text-xs">+ Coleta</button>
-                        <button onclick="stops.push({type:'delivery',address:'',contact:'',price:0,loading:false});renderTab('quote')" class="w-1/2 py-3 border-2 border-dashed border-green-200 rounded-2xl text-green-500 font-bold text-xs">+ Entrega</button>
-                    </div>
-
-                    <button id="whatsapp-btn" onclick="handleOrder()" class="w-full text-white font-black py-4 rounded-2xl shadow-xl text-lg flex items-center justify-center gap-2 transition-all bg-gray-300 cursor-not-allowed">
-                        PREENCHA OS CAMPOS
-                    </button>
-                `;
-                validateButton();
-            } else if (tab === 'about') {
-                btnAbout.classList.add('text-blue-700', 'scale-110');
-                main.innerHTML = `<div class="space-y-6 animate-fade-in pb-10"><div class="bg-blue-900 rounded-3xl p-6 text-white shadow-2xl relative overflow-hidden"><h2 class="text-3xl font-black italic mb-2">Expresso Silva</h2><p class="text-blue-200 text-sm font-medium">Logística inteligente para quem tem pressa.</p><div class="mt-4 flex items-center gap-2 text-xs font-bold bg-white/10 p-2 rounded-lg w-fit">📍 Rua Paranaíba, 337 - Aparecida</div></div><div class="grid grid-cols-2 gap-4"><div class="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 text-center"><div class="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-2 text-xl">🚚</div><p class="text-xs font-black text-gray-800">Cobertura</p><p class="text-[10px] text-gray-400">BH e Região</p></div><div class="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 text-center"><div class="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-2 text-xl">🕒</div><p class="text-xs font-black text-gray-800">Agilidade</p><p class="text-[10px] text-gray-400">Entregas Urgentes</p></div></div><div class="bg-white p-6 rounded-3xl shadow-sm border border-gray-100"><h3 class="text-lg font-black text-gray-800 mb-6 font-bold">💼 Nossos Serviços</h3><div class="grid gap-3"><div class="bg-gray-50 p-4 rounded-2xl border border-gray-100 text-sm font-bold">📦 Coletas e entregas em geral</div><div class="bg-gray-50 p-4 rounded-2xl border border-gray-100 text-sm font-bold">🏛️ Serviços bancários e cartórios</div><div class="bg-gray-50 p-4 rounded-2xl border border-gray-100 text-sm font-bold">⚡ Encomendas urgentes</div></div></div></div>`;
-            } else if (tab === 'feedback') {
-                btnFeedback.classList.add('text-blue-700', 'scale-110');
-                main.innerHTML = `<div class="text-center p-10 bg-white rounded-3xl border border-gray-100 animate-fade-in"><div class="text-4xl mb-4">⭐</div><h2 class="text-2xl font-black text-gray-800">Sua Opinião</h2><p class="text-sm text-gray-500 mt-2">Fale conosco pelo WhatsApp!</p></div>`;
-            }
-        }
-
-        // FUNÇÃO PARA ATUALIZAR SÓ OS NÚMEROS NA TELA SEM SAIR DO CAMPO
-        function updateDisplayOnly() {
-            let subtotal = stops.reduce((acc, s) => acc + s.price, 0);
-            let totalFinal = Math.max(0, subtotal - discountApplied);
-            document.getElementById('display-total').innerText = `R$ ${totalFinal.toFixed(2).replace('.', ',')}`;
-            
-            const discDiv = document.getElementById('display-discount');
-            if (discountApplied > 0) {
-                discDiv.innerText = `Cupom aplicado: - R$ ${discountApplied.toFixed(2).replace('.', ',')}`;
-                discDiv.classList.remove('hidden');
-            } else {
-                discDiv.classList.add('hidden');
-            }
-        }
-
-        function handleOrder() {
-            let subtotal = stops.reduce((acc, s) => acc + s.price, 0);
-            let totalFinal = Math.max(0, subtotal - discountApplied);
-            if (totalFinal === 0 && subtotal === 0) return;
-
-            let msg = `*NOVO PEDIDO - EXPRESSO SILVA*\n📦 *O que:* ${deliveryObject}\n\n`;
-            stops.forEach((s, i) => {
-                msg += `${s.type === 'pickup' ? '📍 COLETA' : '🏁 ENTREGA'}\n🏠 *End:* ${s.address}\n👤 *Resp:* ${s.contact}\n\n`;
-            });
-            
-            if(discountApplied > 0) {
-                msg += `💰 *Subtotal: R$ ${subtotal.toFixed(2).replace('.', ',')}*\n`;
-                msg += `🏷️ *Cupom:* ${couponCode.toUpperCase()} (- R$ ${discountApplied.toFixed(2).replace('.', ',')})\n`;
-            }
-            msg += `✅ *TOTAL FINAL: R$ ${totalFinal.toFixed(2).replace('.', ',')}*`;
-            
-            window.open(`https://wa.me/553134225426?text=${encodeURIComponent(msg)}`);
-        }
-
-        renderTab('quote');
-    </script>
-</body>
-</html>
+                        <button onclick="stops.push({type:'delivery',address:'',contact:'',price:0,loading:false});renderTab('quote')"
