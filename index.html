@@ -52,7 +52,7 @@
 
             <main class="flex-1 p-5 overflow-y-auto animate-fade-in" id="main-content"></main>
 
-            <nav class="bg-white border-t border-gray-100 sticky bottom-0 z-50 pb-safe shadow-[0_-10px_20_rgba(0,0,0,0.02)]">
+            <nav class="bg-white border-t border-gray-100 sticky bottom-0 z-50 pb-safe shadow-[0_-10px_20px_rgba(0,0,0,0.02)]">
                 <div class="flex justify-around items-center h-20">
                     <button onclick="renderTab('about')" class="flex flex-col items-center w-full text-gray-300" id="btn-about">
                         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>
@@ -76,6 +76,8 @@
         const PRICE_TABLE = {"aarao reis": 25, "adelaide": 18, "aeroporto": 22, "aparecida": 10, "bom jesus": 10, "cachoeirinha": 10, "centro": 20, "savassi": 20, "lourdes": 15};
 
         let deliveryObject = "";
+        let couponCode = "";
+        let discountApplied = 0;
         let stops = [{ type: 'pickup', address: '', contact: '', price: 0, loading: false }, { type: 'delivery', address: '', contact: '', price: 0, loading: false }];
 
         function hideInstall() { document.getElementById('install-popup').classList.add('hidden'); }
@@ -108,7 +110,32 @@
                     } else { stops[index].price = 20; }
                 } catch (e) { stops[index].price = 20; }
             }
-            stops[index].loading = false; renderTab('quote');
+            stops[index].loading = false;
+            applyCoupon();
+            renderTab('quote');
+        }
+
+        function applyCoupon() {
+            const input = document.getElementById('couponInput');
+            if(input) couponCode = input.value.toUpperCase().trim();
+            
+            let totalSemDesconto = stops.reduce((acc, s) => acc + s.price, 0);
+            discountApplied = 0;
+
+            if (couponCode === "SILVA10") {
+                // REGRA INTELIGENTE DE PROTEÇÃO DE MARGEM (25%)
+                if (totalSemDesconto <= 30) {
+                    discountApplied = totalSemDesconto * 0.10; // 10% em corridas curtas
+                } else if (totalSemDesconto <= 80) {
+                    discountApplied = 5.00; // R$ 5 fixos em corridas médias
+                } else {
+                    discountApplied = 10.00; // R$ 10 fixos em corridas longas
+                }
+            }
+            // Espaço para cupom sazonal
+            if (couponCode === "DIADASKIDS") {
+                discountApplied = totalSemDesconto * 0.10;
+            }
         }
 
         function validateButton() {
@@ -136,7 +163,8 @@
 
             if (tab === 'quote') {
                 btnQuote.classList.replace('bg-gray-400', 'bg-blue-800');
-                let total = stops.reduce((acc, s) => acc + s.price, 0);
+                let subtotal = stops.reduce((acc, s) => acc + s.price, 0);
+                let totalFinal = Math.max(0, subtotal - discountApplied);
                 
                 let stopsHTML = stops.map((s, i) => `
                     <div class="bg-white rounded-2xl shadow-sm border p-4 mb-4 border-gray-100">
@@ -149,26 +177,39 @@
                             ${s.loading ? '<div class="absolute right-3 top-3"><div class="loader"></div></div>' : ''}
                         </div>
                         <div class="flex gap-2">
-                            <input id="cont-${i}" onchange="stops[${i}].contact=this.value; validateButton()" oninput="stops[${i}].contact=this.value; validateButton()" value="${s.contact}" type="text" placeholder="Nome / Responsável" class="w-1/2 p-2.5 border border-gray-100 rounded-xl text-xs bg-gray-50 outline-none focus:ring-1 focus:ring-blue-400">
+                            <input id="cont-${i}" oninput="stops[${i}].contact=this.value; validateButton()" value="${s.contact}" type="text" placeholder="Nome / Responsável" class="w-1/2 p-2.5 border border-gray-100 rounded-xl text-xs bg-gray-50 outline-none">
                             <div class="w-1/2 flex items-center justify-center font-bold text-green-600 bg-gray-50 rounded-xl text-sm italic">R$ ${s.price.toFixed(2).replace('.', ',')}</div>
                         </div>
                     </div>
                 `).join('');
 
                 main.innerHTML = `
-                    <div class="bg-gradient-to-r from-blue-700 to-blue-900 p-6 rounded-3xl text-white shadow-xl mb-6 flex justify-between items-center relative overflow-hidden">
-                        <div class="z-10"><h2 class="text-xs font-bold uppercase opacity-80 mb-1">Total Estimado</h2><div class="text-4xl font-black italic">R$ ${total.toFixed(2).replace('.', ',')}</div></div>
-                        <div class="text-4xl opacity-20 rotate-12">💰</div>
+                    <div class="bg-gradient-to-r from-blue-700 to-blue-900 p-6 rounded-3xl text-white shadow-xl mb-6 relative overflow-hidden">
+                        <div class="z-10 relative">
+                            <h2 class="text-xs font-bold uppercase opacity-80 mb-1">Total Estimado</h2>
+                            <div class="text-4xl font-black italic">R$ ${totalFinal.toFixed(2).replace('.', ',')}</div>
+                            ${discountApplied > 0 ? `<div class="text-[10px] mt-1 text-green-300 font-bold">Cupom aplicado: - R$ ${discountApplied.toFixed(2).replace('.', ',')}</div>` : ''}
+                        </div>
+                        <div class="absolute right-[-10px] bottom-[-10px] text-6xl opacity-10 rotate-12">💰</div>
                     </div>
+
+                    <div class="bg-white rounded-2xl shadow-sm border p-4 mb-4 border-gray-100">
+                        <label class="block text-xs font-black text-gray-400 mb-2 uppercase tracking-tighter">🏷️ Cupom de Desconto</label>
+                        <input id="couponInput" oninput="applyCoupon(); renderTab('quote')" value="${couponCode}" type="text" placeholder="Código do cupom" class="w-full p-2.5 border border-gray-200 rounded-xl text-sm bg-gray-50 outline-none uppercase font-bold text-blue-800">
+                    </div>
+
                     <div class="bg-white rounded-2xl shadow-sm border p-4 mb-6 border-gray-100">
                         <label class="block text-sm font-black text-gray-700 mb-2">📦 O que vamos entregar?</label>
-                        <input id="objInput" onchange="deliveryObject=this.value; validateButton()" oninput="deliveryObject=this.value; validateButton()" value="${deliveryObject}" type="text" placeholder="Ex: Marmitas, Peças..." class="w-full p-3 border border-gray-200 rounded-xl text-sm bg-gray-50 outline-none focus:ring-1 focus:ring-blue-400">
+                        <input id="objInput" oninput="deliveryObject=this.value; validateButton()" value="${deliveryObject}" type="text" placeholder="Ex: Marmitas, Peças..." class="w-full p-3 border border-gray-200 rounded-xl text-sm bg-gray-50 outline-none">
                     </div>
+
                     ${stopsHTML}
+                    
                     <div class="flex gap-2 mb-8">
                         <button onclick="stops.push({type:'pickup',address:'',contact:'',price:0,loading:false});renderTab('quote')" class="w-1/2 py-3 border-2 border-dashed border-blue-200 rounded-2xl text-blue-500 font-bold text-xs">+ Coleta</button>
                         <button onclick="stops.push({type:'delivery',address:'',contact:'',price:0,loading:false});renderTab('quote')" class="w-1/2 py-3 border-2 border-dashed border-green-200 rounded-2xl text-green-500 font-bold text-xs">+ Entrega</button>
                     </div>
+
                     <button id="whatsapp-btn" onclick="handleOrder()" class="w-full text-white font-black py-4 rounded-2xl shadow-xl text-lg flex items-center justify-center gap-2 transition-all bg-gray-300 cursor-not-allowed">
                         PREENCHA OS CAMPOS
                     </button>
@@ -184,17 +225,21 @@
         }
 
         function handleOrder() {
-            const hasObject = deliveryObject.trim().length > 2;
-            const allStopsFilled = stops.every(s => s.address.trim().length > 5 && s.contact.trim().length > 1);
-            if (hasObject && allStopsFilled) {
-                let total = stops.reduce((acc, s) => acc + s.price, 0);
-                let msg = `*NOVO PEDIDO - EXPRESSO SILVA*\n📦 *O que:* ${deliveryObject}\n\n`;
-                stops.forEach((s, i) => {
-                    msg += `${s.type === 'pickup' ? '📍 COLETA' : '🏁 ENTREGA'}\n🏠 *End:* ${s.address}\n👤 *Resp:* ${s.contact}\n\n`;
-                });
-                msg += `💰 *TOTAL ESTIMADO: R$ ${total.toFixed(2).replace('.', ',')}*`;
-                window.open(`https://wa.me/553134225426?text=${encodeURIComponent(msg)}`);
+            let subtotal = stops.reduce((acc, s) => acc + s.price, 0);
+            let totalFinal = Math.max(0, subtotal - discountApplied);
+            
+            let msg = `*NOVO PEDIDO - EXPRESSO SILVA*\n📦 *O que:* ${deliveryObject}\n\n`;
+            stops.forEach((s, i) => {
+                msg += `${s.type === 'pickup' ? '📍 COLETA' : '🏁 ENTREGA'}\n🏠 *End:* ${s.address}\n👤 *Resp:* ${s.contact}\n\n`;
+            });
+            
+            if(discountApplied > 0) {
+                msg += `💰 *Subtotal: R$ ${subtotal.toFixed(2).replace('.', ',')}*\n`;
+                msg += `🏷️ *Cupom:* ${couponCode} (- R$ ${discountApplied.toFixed(2).replace('.', ',')})\n`;
             }
+            msg += `✅ *TOTAL FINAL: R$ ${totalFinal.toFixed(2).replace('.', ',')}*`;
+            
+            window.open(`https://wa.me/553134225426?text=${encodeURIComponent(msg)}`);
         }
 
         renderTab('quote');
