@@ -98,3 +98,143 @@
             let totalSemDesconto = stops.reduce((acc, s) => acc + s.price, 0);
             discountApplied = 0;
             const code = couponCode.toUpperCase().trim();
+
+            if (code === "PRIMEIRAVEZ") {
+                if (totalSemDesconto <= 30) {
+                    discountApplied = totalSemDesconto * 0.10;
+                } else if (totalSemDesconto <= 80) {
+                    discountApplied = 5.00;
+                } else {
+                    discountApplied = 10.00;
+                }
+            } else if (code === "DIADASKIDS") {
+                discountApplied = totalSemDesconto * 0.10;
+            }
+        }
+
+        function validateButton() {
+            const btn = document.getElementById('whatsapp-btn');
+            if (!btn) return;
+            const hasObject = deliveryObject.trim().length > 2;
+            const allStopsFilled = stops.every(s => s.address.trim().length > 5 && s.contact.trim().length > 1);
+            
+            if (hasObject && allStopsFilled) {
+                btn.classList.remove('bg-gray-300', 'cursor-not-allowed');
+                btn.classList.add('bg-green-600', 'active:scale-95');
+                btn.innerText = 'PEDIR NO WHATSAPP';
+            } else {
+                btn.classList.add('bg-gray-300', 'cursor-not-allowed');
+                btn.classList.remove('bg-green-600', 'active:scale-95');
+                btn.innerText = 'PREENCHA OS CAMPOS';
+            }
+        }
+
+        function renderTab(tab) {
+            const main = document.getElementById('main-content');
+            const btnAbout = document.getElementById('btn-about'); const btnQuote = document.getElementById('btn-quote'); const btnFeedback = document.getElementById('btn-feedback');
+            [btnAbout, btnFeedback].forEach(b => { b.classList.replace('text-blue-700', 'text-gray-300'); b.classList.remove('scale-110'); });
+            btnQuote.classList.replace('bg-blue-800', 'bg-gray-400');
+
+            if (tab === 'quote') {
+                btnQuote.classList.replace('bg-gray-400', 'bg-blue-800');
+                let subtotal = stops.reduce((acc, s) => acc + s.price, 0);
+                let totalFinal = Math.max(0, subtotal - discountApplied);
+                
+                let stopsHTML = stops.map((s, i) => `
+                    <div class="bg-white rounded-2xl shadow-sm border p-4 mb-4 border-gray-100">
+                        <div class="flex justify-between mb-2">
+                            <span class="text-[10px] font-black uppercase px-2 py-1 rounded ${s.type==='pickup'?'bg-blue-100 text-blue-700':'bg-green-100 text-green-700'}">${s.type==='pickup'?'📍 Coleta':'🏁 Entrega'}</span>
+                            ${stops.length > 2 ? `<button onclick="stops.splice(${i},1);renderTab('quote')" class="text-red-400 text-xs font-bold">Remover</button>` : ''}
+                        </div>
+                        <div class="relative">
+                            <input id="addr-${i}" onblur="updatePrice(${i})" value="${s.address}" type="text" placeholder="Rua, número e bairro" class="w-full p-3 border border-gray-100 rounded-xl mb-3 text-sm bg-gray-50 outline-none">
+                            ${s.loading ? '<div class="absolute right-3 top-3"><div class="loader"></div></div>' : ''}
+                        </div>
+                        <div class="flex gap-2">
+                            <input id="cont-${i}" oninput="stops[${i}].contact=this.value; validateButton()" value="${s.contact}" type="text" placeholder="Nome / Responsável" class="w-1/2 p-2.5 border border-gray-100 rounded-xl text-xs bg-gray-50 outline-none">
+                            <div class="w-1/2 flex items-center justify-center font-bold text-green-600 bg-gray-50 rounded-xl text-sm italic">R$ ${s.price.toFixed(2).replace('.', ',')}</div>
+                        </div>
+                    </div>
+                `).join('');
+
+                main.innerHTML = `
+                    <div class="bg-gradient-to-r from-blue-700 to-blue-900 p-6 rounded-3xl text-white shadow-xl mb-6 relative overflow-hidden">
+                        <div class="z-10 relative">
+                            <h2 class="text-xs font-bold uppercase opacity-80 mb-1">Total Estimado</h2>
+                            <div class="text-4xl font-black italic" id="display-total">R$ ${totalFinal.toFixed(2).replace('.', ',')}</div>
+                            <div id="display-discount" class="text-[10px] mt-1 text-green-300 font-bold ${discountApplied > 0 ? '' : 'hidden'}">Cupom aplicado: - R$ ${discountApplied.toFixed(2).replace('.', ',')}</div>
+                        </div>
+                        <div class="absolute right-[-10px] bottom-[-10px] text-6xl opacity-10 rotate-12">💰</div>
+                    </div>
+
+                    <div class="bg-white rounded-2xl shadow-sm border p-4 mb-4 border-gray-100">
+                        <label class="block text-xs font-black text-gray-400 mb-2 uppercase tracking-tighter">🏷️ Cupom de Desconto</label>
+                        <input id="couponInput" oninput="couponCode=this.value; applyCouponLogic(); updateDisplayOnly(); validateButton()" value="${couponCode}" type="text" placeholder="Digite o cupom aqui..." class="w-full p-3 border border-gray-200 rounded-xl text-sm bg-gray-50 outline-none uppercase font-bold text-blue-800">
+                    </div>
+
+                    <div class="bg-white rounded-2xl shadow-sm border p-4 mb-6 border-gray-100">
+                        <label class="block text-sm font-black text-gray-700 mb-2 font-bold">📦 O que vamos entregar?</label>
+                        <input id="objInput" oninput="deliveryObject=this.value; validateButton()" value="${deliveryObject}" type="text" placeholder="Ex: Marmitas, Peças..." class="w-full p-3 border border-gray-200 rounded-xl text-sm bg-gray-50 outline-none">
+                    </div>
+
+                    ${stopsHTML}
+                    
+                    <div class="flex gap-2 mb-8">
+                        <button onclick="stops.push({type:'pickup',address:'',contact:'',price:0,loading:false});renderTab('quote')" class="w-1/2 py-3 border-2 border-dashed border-blue-200 rounded-2xl text-blue-500 font-bold text-xs">+ Coleta</button>
+                        <button onclick="stops.push({type:'delivery',address:'',contact:'',price:0,loading:false});renderTab('quote')" class="w-1/2 py-3 border-2 border-dashed border-green-200 rounded-2xl text-green-500 font-bold text-xs">+ Entrega</button>
+                    </div>
+
+                    <button id="whatsapp-btn" onclick="handleOrder()" class="w-full text-white font-black py-4 rounded-2xl shadow-xl text-lg flex items-center justify-center gap-2 transition-all bg-gray-300 cursor-not-allowed">
+                        PREENCHA OS CAMPOS
+                    </button>
+                `;
+                validateButton();
+            } else if (tab === 'about') {
+                btnAbout.classList.add('text-blue-700', 'scale-110');
+                main.innerHTML = `<div class="space-y-6 animate-fade-in pb-10"><div class="bg-blue-900 rounded-3xl p-6 text-white shadow-2xl relative overflow-hidden"><h2 class="text-3xl font-black italic mb-2">Expresso Silva</h2><p class="text-blue-200 text-sm font-medium">Logística inteligente para quem tem pressa.</p><div class="mt-4 flex items-center gap-2 text-xs font-bold bg-white/10 p-2 rounded-lg w-fit">📍 Rua Paranaíba, 337 - Aparecida</div></div><div class="grid grid-cols-2 gap-4"><div class="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 text-center"><div class="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-2 text-xl">🚚</div><p class="text-xs font-black text-gray-800">Cobertura</p><p class="text-[10px] text-gray-400">BH e Região</p></div><div class="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 text-center"><div class="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-2 text-xl">🕒</div><p class="text-xs font-black text-gray-800">Agilidade</p><p class="text-[10px] text-gray-400">Entregas Urgentes</p></div></div><div class="bg-white p-6 rounded-3xl shadow-sm border border-gray-100"><h3 class="text-lg font-black text-gray-800 mb-6 font-bold">💼 Nossos Serviços</h3><div class="grid gap-3"><div class="bg-gray-50 p-4 rounded-2xl border border-gray-100 text-sm font-bold">📦 Coletas e entregas em geral</div><div class="bg-gray-50 p-4 rounded-2xl border border-gray-100 text-sm font-bold">🏛️ Serviços bancários e cartórios</div><div class="bg-gray-50 p-4 rounded-2xl border border-gray-100 text-sm font-bold">⚡ Encomendas urgentes</div></div></div></div>`;
+            } else if (tab === 'feedback') {
+                btnFeedback.classList.add('text-blue-700', 'scale-110');
+                main.innerHTML = `<div class="text-center p-10 bg-white rounded-3xl border border-gray-100 animate-fade-in"><div class="text-4xl mb-4">⭐</div><h2 class="text-2xl font-black text-gray-800">Sua Opinião</h2><p class="text-sm text-gray-500 mt-2">Fale conosco pelo WhatsApp!</p></div>`;
+            }
+        }
+
+        function updateDisplayOnly() {
+            let subtotal = stops.reduce((acc, s) => acc + s.price, 0);
+            let totalFinal = Math.max(0, subtotal - discountApplied);
+            const totalEl = document.getElementById('display-total');
+            if(totalEl) totalEl.innerText = `R$ ${totalFinal.toFixed(2).replace('.', ',')}`;
+            
+            const discDiv = document.getElementById('display-discount');
+            if (discDiv) {
+                if (discountApplied > 0) {
+                    discDiv.innerText = `Cupom aplicado: - R$ ${discountApplied.toFixed(2).replace('.', ',')}`;
+                    discDiv.classList.remove('hidden');
+                } else {
+                    discDiv.classList.add('hidden');
+                }
+            }
+        }
+
+        function handleOrder() {
+            let subtotal = stops.reduce((acc, s) => acc + s.price, 0);
+            let totalFinal = Math.max(0, subtotal - discountApplied);
+            if (totalFinal === 0 && subtotal === 0) return;
+
+            let msg = `*NOVO PEDIDO - EXPRESSO SILVA*\n📦 *O que:* ${deliveryObject}\n\n`;
+            stops.forEach((s, i) => {
+                msg += `${s.type === 'pickup' ? '📍 COLETA' : '🏁 ENTREGA'}\n🏠 *End:* ${s.address}\n👤 *Resp:* ${s.contact}\n\n`;
+            });
+            
+            if(discountApplied > 0) {
+                msg += `💰 *Subtotal: R$ ${subtotal.toFixed(2).replace('.', ',')}*\n`;
+                msg += `🏷️ *Cupom:* ${couponCode.toUpperCase()} (- R$ ${discountApplied.toFixed(2).replace('.', ',')})\n`;
+            }
+            msg += `✅ *TOTAL FINAL: R$ ${totalFinal.toFixed(2).replace('.', ',')}*`;
+            
+            window.open(`https://wa.me/553134225426?text=${encodeURIComponent(msg)}`);
+        }
+
+        renderTab('quote');
+    </script>
+</body>
+</html>
