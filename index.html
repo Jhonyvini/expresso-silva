@@ -13,6 +13,7 @@
         .pb-safe { padding-bottom: env(safe-area-inset-bottom); }
         .loader { border: 2px solid #f3f3f3; border-top: 2px solid #3498db; border-radius: 50%; width: 14px; height: 14px; animation: spin 1s linear infinite; display: inline-block; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        .btn-disabled { background-color: #d1d5db !important; cursor: not-allowed; opacity: 0.7; transform: scale(1) !important; }
     </style>
 </head>
 <body class="bg-gray-200">
@@ -30,9 +31,9 @@
                     <button onclick="hideInstall()" class="text-white/50 text-xs ml-1">✕</button>
                 </div>
                 <div id="pwa-instructions" class="hidden text-center py-2">
-                    <p class="text-xs font-bold mb-2">Para instalar em seu celular:</p>
-                    <p class="text-[10px] leading-relaxed">No Android: Clique nos <span class="font-bold">3 pontinhos</span> e em <span class="font-bold">"Instalar Aplicativo"</span>.<br>No iPhone: Clique no ícone de <span class="font-bold">Compartilhar</span> e em <span class="font-bold">"Tela de Início"</span>.</p>
-                    <button onclick="hideInstall()" class="mt-3 bg-white/20 w-full py-2 rounded-xl text-[10px] font-bold">ENTENDI</button>
+                    <p class="text-xs font-bold mb-2">Como instalar:</p>
+                    <p class="text-[10px] leading-relaxed">No Android: Clique nos <span class="font-bold">3 pontinhos</span> e em <span class="font-bold">"Instalar App"</span>.<br>No iPhone: Clique em <span class="font-bold">Compartilhar</span> e em <span class="font-bold">"Tela de Início"</span>.</p>
+                    <button onclick="hideInstall()" class="mt-3 bg-white/20 w-full py-2 rounded-xl text-[10px] font-bold">FECHAR</button>
                 </div>
             </div>
 
@@ -46,10 +47,6 @@
                             <span class="text-xl font-black italic text-blue-900 leading-none">EXPRESSO</span>
                             <span class="text-lg font-bold text-red-600 leading-none">SILVA</span>
                         </div>
-                    </div>
-                    <div class="flex items-center gap-2">
-                        <div class="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-                        <span class="text-[10px] font-black text-gray-400 uppercase tracking-widest">Ativo</span>
                     </div>
                 </div>
             </header>
@@ -82,13 +79,9 @@
         let deliveryObject = "";
         let stops = [{ type: 'pickup', address: '', contact: '', price: 0, loading: false }, { type: 'delivery', address: '', contact: '', price: 0, loading: false }];
 
-        // Funções do Pop-up
         function hideInstall() { document.getElementById('install-popup').classList.add('hidden'); }
-        function showInstructions() { 
-            document.getElementById('pwa-initial').classList.add('hidden');
-            document.getElementById('pwa-instructions').classList.remove('hidden');
-        }
-        setTimeout(() => { document.getElementById('install-popup').classList.remove('hidden'); }, 4000);
+        function showInstructions() { document.getElementById('pwa-initial').classList.add('hidden'); document.getElementById('pwa-instructions').classList.remove('hidden'); }
+        setTimeout(() => { document.getElementById('install-popup').classList.remove('hidden'); }, 5000);
 
         function getDistanceFromLatLonInKm(lat1, lon1, lat2, lon2) {
             var R = 6371; var dLat = (lat2-lat1) * Math.PI / 180; var dLon = (lon2-lon1) * Math.PI / 180;
@@ -117,6 +110,12 @@
             stops[index].loading = false; stops[index].address = addr; renderTab('quote');
         }
 
+        function isFormValid() {
+            const hasObject = deliveryObject.trim().length > 2;
+            const allStopsFilled = stops.every(s => s.address.trim().length > 5 && s.contact.trim().length > 1);
+            return hasObject && allStopsFilled;
+        }
+
         function renderTab(tab) {
             const main = document.getElementById('main-content');
             const btnAbout = document.getElementById('btn-about'); const btnQuote = document.getElementById('btn-quote'); const btnFeedback = document.getElementById('btn-feedback');
@@ -126,6 +125,8 @@
             if (tab === 'quote') {
                 btnQuote.classList.replace('bg-gray-400', 'bg-blue-800');
                 let total = stops.reduce((acc, s) => acc + s.price, 0);
+                const valid = isFormValid();
+                
                 let stopsHTML = stops.map((s, i) => `
                     <div class="bg-white rounded-2xl shadow-sm border p-4 mb-4 border-gray-100 animate-fade-in">
                         <div class="flex justify-between mb-2">
@@ -137,7 +138,7 @@
                             ${s.loading ? '<div class="absolute right-3 top-3"><div class="loader"></div></div>' : ''}
                         </div>
                         <div class="flex gap-2">
-                            <input id="cont-${i}" onchange="stops[${i}].contact=this.value" value="${s.contact}" type="text" placeholder="Referência" class="w-1/2 p-2.5 border border-gray-100 rounded-xl text-xs bg-gray-50">
+                            <input id="cont-${i}" oninput="stops[${i}].contact=this.value; renderTab('quote')" value="${s.contact}" type="text" placeholder="Nome / Responsável" class="w-1/2 p-2.5 border border-gray-100 rounded-xl text-xs bg-gray-50 outline-none focus:ring-1 focus:ring-blue-400">
                             <div class="w-1/2 flex items-center justify-center font-bold text-green-600 bg-gray-50 rounded-xl text-sm italic">R$ ${s.price.toFixed(2).replace('.', ',')}</div>
                         </div>
                     </div>
@@ -150,49 +151,36 @@
                     </div>
                     <div class="bg-white rounded-2xl shadow-sm border p-4 mb-6 border-gray-100">
                         <label class="block text-sm font-black text-gray-700 mb-2">📦 O que vamos entregar?</label>
-                        <input id="objInput" onchange="deliveryObject=this.value" value="${deliveryObject}" type="text" placeholder="Ex: Marmitas, Peças..." class="w-full p-3 border border-gray-200 rounded-xl text-sm bg-gray-50">
+                        <input id="objInput" oninput="deliveryObject=this.value; renderTab('quote')" value="${deliveryObject}" type="text" placeholder="Ex: Marmitas, Peças..." class="w-full p-3 border border-gray-200 rounded-xl text-sm bg-gray-50 outline-none focus:ring-1 focus:ring-blue-400">
                     </div>
                     ${stopsHTML}
                     <div class="flex gap-2 mb-8">
-                        <button onclick="stops.push({type:'pickup',address:'',contact:'',price:0,loading:false});renderTab('quote')" class="w-1/2 py-3 border-2 border-dashed border-blue-200 rounded-2xl text-blue-500 font-bold text-xs">+ Coleta</button>
-                        <button onclick="stops.push({type:'delivery',address:'',contact:'',price:0,loading:false});renderTab('quote')" class="w-1/2 py-3 border-2 border-dashed border-green-200 rounded-2xl text-green-500 font-bold text-xs">+ Entrega</button>
+                        <button onclick="stops.push({type:'pickup',address:'',contact:'',price:0,loading:false});renderTab('quote')" class="w-1/2 py-3 border-2 border-dashed border-blue-200 rounded-2xl text-blue-500 font-bold text-xs hover:bg-blue-50 transition-all">+ Coleta</button>
+                        <button onclick="stops.push({type:'delivery',address:'',contact:'',price:0,loading:false});renderTab('quote')" class="w-1/2 py-3 border-2 border-dashed border-green-200 rounded-2xl text-green-500 font-bold text-xs hover:bg-green-50 transition-all">+ Entrega</button>
                     </div>
-                    <button onclick="let total = stops.reduce((acc, s) => acc + s.price, 0); let msg = '*NOVO PEDIDO - EXPRESSO SILVA*\\n📦 *O que:* '+deliveryObject+'\\n\\n'; stops.forEach((s, i) => { msg += (s.type === 'pickup' ? '📍 COLETA' : '🏁 ENTREGA') + '\\n🏠 *End:* ' + s.address + '\\n👤 *Ref:* ' + s.contact + '\\n\\n'; }); msg += '💰 *TOTAL: R$ ' + total.toFixed(2).replace('.', ',') + '*'; window.open('https://wa.me/553134225426?text=' + encodeURIComponent(msg))" class="w-full bg-green-600 text-white font-black py-4 rounded-2xl shadow-xl text-lg flex items-center justify-center gap-2">PEDIR NO WHATSAPP</button>
+                    <button onclick="${valid ? "sendWhatsApp()" : ""}" class="w-full text-white font-black py-4 rounded-2xl shadow-xl text-lg flex items-center justify-center gap-2 transition-all ${valid ? 'bg-green-600 active:scale-95' : 'bg-gray-300 cursor-not-allowed'}">
+                        ${valid ? 'PEDIR NO WHATSAPP' : 'PREENCHA OS CAMPOS'}
+                    </button>
                 `;
             } else if (tab === 'about') {
                 btnAbout.classList.add('text-blue-700', 'scale-110');
-                main.innerHTML = `
-                    <div class="space-y-6 animate-fade-in pb-10">
-                        <div class="bg-blue-900 rounded-3xl p-6 text-white shadow-2xl relative overflow-hidden">
-                            <h2 class="text-3xl font-black italic mb-2">Expresso Silva</h2>
-                            <p class="text-blue-200 text-sm font-medium">Logística inteligente para quem tem pressa.</p>
-                            <div class="mt-4 flex items-center gap-2 text-xs font-bold bg-white/10 p-2 rounded-lg w-fit">📍 Rua Paranaíba, 337 - Aparecida</div>
-                        </div>
-                        <div class="grid grid-cols-2 gap-4">
-                            <div class="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 text-center">
-                                <div class="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-2 text-xl">🚚</div>
-                                <p class="text-xs font-black text-gray-800">Cobertura</p><p class="text-[10px] text-gray-400">BH e Região</p>
-                            </div>
-                            <div class="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 text-center">
-                                <div class="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-2 text-xl">🕒</div>
-                                <p class="text-xs font-black text-gray-800">Agilidade</p><p class="text-[10px] text-gray-400">Entregas Urgentes</p>
-                            </div>
-                        </div>
-                        <div class="bg-white p-6 rounded-3xl shadow-sm border border-gray-100">
-                            <h3 class="text-lg font-black text-gray-800 mb-6">💼 Nossos Serviços</h3>
-                            <div class="grid gap-3">
-                                <div class="bg-gray-50 p-4 rounded-2xl border border-gray-100 text-sm font-bold">📦 Coletas e entregas em geral</div>
-                                <div class="bg-gray-50 p-4 rounded-2xl border border-gray-100 text-sm font-bold">🏛️ Serviços bancários e cartórios</div>
-                                <div class="bg-gray-50 p-4 rounded-2xl border border-gray-100 text-sm font-bold">⚡ Encomendas urgentes</div>
-                            </div>
-                        </div>
-                    </div>
-                `;
+                main.innerHTML = `<div class="space-y-6 animate-fade-in pb-10"><div class="bg-blue-900 rounded-3xl p-6 text-white shadow-2xl relative overflow-hidden"><h2 class="text-3xl font-black italic mb-2">Expresso Silva</h2><p class="text-blue-200 text-sm font-medium">Logística inteligente para quem tem pressa.</p><div class="mt-4 flex items-center gap-2 text-xs font-bold bg-white/10 p-2 rounded-lg w-fit">📍 Rua Paranaíba, 337 - Aparecida</div></div><div class="grid grid-cols-2 gap-4"><div class="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 text-center"><div class="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-2 text-xl">🚚</div><p class="text-xs font-black text-gray-800">Cobertura</p><p class="text-[10px] text-gray-400">BH e Região</p></div><div class="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 text-center"><div class="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-2 text-xl">🕒</div><p class="text-xs font-black text-gray-800">Agilidade</p><p class="text-[10px] text-gray-400">Entregas Urgentes</p></div></div><div class="bg-white p-6 rounded-3xl shadow-sm border border-gray-100"><h3 class="text-lg font-black text-gray-800 mb-6 font-bold">💼 Nossos Serviços</h3><div class="grid gap-3"><div class="bg-gray-50 p-4 rounded-2xl border border-gray-100 text-sm font-bold">📦 Coletas e entregas em geral</div><div class="bg-gray-50 p-4 rounded-2xl border border-gray-100 text-sm font-bold">🏛️ Serviços bancários e cartórios</div><div class="bg-gray-50 p-4 rounded-2xl border border-gray-100 text-sm font-bold">⚡ Encomendas urgentes</div></div></div></div>`;
             } else if (tab === 'feedback') {
                 btnFeedback.classList.add('text-blue-700', 'scale-110');
                 main.innerHTML = `<div class="text-center p-10 bg-white rounded-3xl border border-gray-100 animate-fade-in"><div class="text-4xl mb-4">⭐</div><h2 class="text-2xl font-black text-gray-800">Sua Opinião</h2><p class="text-sm text-gray-500 mt-2">Fale conosco pelo WhatsApp!</p></div>`;
             }
         }
+
+        function sendWhatsApp() {
+            let total = stops.reduce((acc, s) => acc + s.price, 0);
+            let msg = `*NOVO PEDIDO - EXPRESSO SILVA*\n📦 *O que:* ${deliveryObject}\n\n`;
+            stops.forEach((s, i) => {
+                msg += `${s.type === 'pickup' ? '📍 COLETA' : '🏁 ENTREGA'}\n🏠 *End:* ${s.address}\n👤 *Resp:* ${s.contact}\n\n`;
+            });
+            msg += `💰 *TOTAL ESTIMADO: R$ ${total.toFixed(2).replace('.', ',')}*`;
+            window.open(`https://wa.me/553134225426?text=${encodeURIComponent(msg)}`);
+        }
+
         renderTab('quote');
     </script>
 </body>
