@@ -58,35 +58,72 @@
         const PRECO_KM = 2.00; const PRECO_MINIMO = 10.00;
         const BAIRROS_10_REAIS = ["aparecida", "bom jesus", "parque riachuelo", "cachoeirinha"];
 
+        // VARIAVEIS DE ESTADO
         let deliveryObject = "";
-        let selectedWeightLabel = "Envio Padrão (Até 20kg)";
+        
+        // Correção Peso: Inicializa vazio para forçar escolha
+        let selectedWeightValue = ""; 
+        let selectedWeightLabel = "";
         let weightSurcharge = 0;
+
+        // Correção Cupom: Controlamos se está ativo, o valor é calculado dinamicamente
+        let isCouponActive = false;
         let couponDiscount = 0;
-        let couponCode = "";
+        let activeCouponCode = "";
+
         let stops = [
             { type: 'pickup', address: '', contact: '', price: 0, loading: false, lat: null, lon: null }, 
             { type: 'delivery', address: '', contact: '', price: 0, loading: false, lat: null, lon: null }
         ];
 
-        function calculateCouponLogic(subtotal) {
-            // Lógica para não ferir os 75% do motoqueiro
+        // Função auxiliar para recalcular totais
+        function getSubtotal() {
+            return stops.reduce((acc, s) => acc + s.price, 0) + weightSurcharge;
+        }
+
+        // Lógica de cálculo do desconto (Centralizada)
+        function calculateCurrentDiscount(subtotal) {
+            if (!isCouponActive || subtotal === 0) return 0;
+            // Se o subtotal for baixo, desconto pequeno. Se for alto, desconto maior.
             if (subtotal <= 15) return 2.00;
             if (subtotal <= 25) return 4.00;
-            return 5.00; // Desconto máximo para proteger a margem
+            return 5.00; 
         }
 
         function applyCoupon() {
-            const val = document.getElementById('couponInput').value.trim().toUpperCase();
-            let subtotal = stops.reduce((acc, s) => acc + s.price, 0) + weightSurcharge;
+            const input = document.getElementById('couponInput');
+            const val = input.value.trim().toUpperCase();
+            const currentSub = getSubtotal();
+
+            // Correção: Não permitir aplicar cupom sem serviços
+            if (currentSub === 0) {
+                alert("Por favor, adicione os endereços de coleta e entrega antes de aplicar o cupom.");
+                return;
+            }
             
             if (val === 'PRIMEIRAVEZ') {
-                couponDiscount = calculateCouponLogic(subtotal);
-                couponCode = val;
-                alert(`Cupom Aplicado! Desconto de R$ ${couponDiscount.toFixed(2)}`);
+                isCouponActive = true;
+                activeCouponCode = val;
+                // O valor exato será calculado no renderTab
+                alert(`Cupom Aplicado! O desconto será calculado sobre o total.`);
             } else {
-                couponDiscount = 0;
-                couponCode = "";
+                isCouponActive = false;
+                activeCouponCode = "";
                 alert('Cupom inválido ou expirado.');
+            }
+            renderTab('quote');
+        }
+
+        function handleWeightChange(selectElement) {
+            selectedWeightValue = selectElement.value;
+            if (selectedWeightValue === "") {
+                weightSurcharge = 0;
+                selectedWeightLabel = "";
+            } else {
+                // Mapeamento de valores
+                const surcharges = { "0": 0, "1": 5, "2": 10, "3": 15, "4": 20 };
+                weightSurcharge = surcharges[selectedWeightValue];
+                selectedWeightLabel = selectElement.options[selectElement.selectedIndex].text;
             }
             renderTab('quote');
         }
@@ -94,6 +131,8 @@
         async function updatePrice(index) {
             const addr = document.getElementById(`addr-${index}`).value;
             stops[index].address = addr;
+            
+            // Só chama API se tiver mais que 5 letras
             if (!addr || addr.length < 5) return;
             
             stops[index].loading = true; renderTab('quote');
@@ -132,27 +171,34 @@
 
             if (tab === 'quote') {
                 document.getElementById('btn-quote').className = "relative -top-6 p-5 rounded-3xl shadow-2xl bg-blue-800 text-white";
-                let subtotal = stops.reduce((acc, s) => acc + s.price, 0) + weightSurcharge;
+                
+                // CÁLCULOS DINÂMICOS
+                let subtotal = getSubtotal();
+                
+                // Recalcula o desconto baseado no subtotal ATUAL
+                couponDiscount = calculateCurrentDiscount(subtotal);
+                
                 let total = Math.max(0, subtotal - couponDiscount);
                 
                 main.innerHTML = `
                     <div class="bg-gradient-to-r from-blue-700 to-blue-900 p-6 rounded-3xl text-white shadow-xl mb-6 relative overflow-hidden">
                         <h2 class="text-xs font-bold uppercase opacity-80 mb-1">Total Estimado</h2>
                         <div class="text-4xl font-black italic">R$ ${total.toFixed(2).replace('.', ',')}</div>
-                        ${couponDiscount > 0 ? `<div class="text-[10px] text-green-300 font-bold mt-1 uppercase">Desconto Cupom: - R$ ${couponDiscount.toFixed(2)}</div>` : ''}
+                        ${couponDiscount > 0 ? `<div class="text-[10px] text-green-300 font-bold mt-1 uppercase animate-pulse">Desconto aplicado: - R$ ${couponDiscount.toFixed(2)}</div>` : ''}
                     </div>
 
                     <div class="bg-white rounded-2xl shadow-sm border p-4 mb-4 border-gray-100">
                         <label class="block text-[10px] font-black uppercase text-gray-400 mb-2 italic">📦 Detalhes da Encomenda</label>
                         <input id="objInput" oninput="deliveryObject=this.value; validateButton()" value="${deliveryObject}" type="text" placeholder="O que vamos levar?" class="w-full p-3 border border-gray-100 rounded-xl text-sm bg-gray-50 outline-none mb-4 font-medium">
                         
-                        <label class="block text-[10px] font-black uppercase text-gray-400 mb-2 italic">⚖️ Categoria / Peso</label>
-                        <select onchange="weightSurcharge=Number({0:0,1:5,2:10,3:15,4:20}[this.value]); selectedWeightLabel=this.options[this.selectedIndex].text; renderTab('quote')" class="w-full p-3 border border-gray-100 rounded-xl text-sm bg-gray-50 outline-none font-bold text-blue-900">
-                            <option value="0" ${weightSurcharge===0?'selected':''}>Envio Padrão (Até 20kg) - ISENTO</option>
-                            <option value="1" ${weightSurcharge===5?'selected':''}>Carga Especial (21 a 30kg) + R$ 5,00</option>
-                            <option value="2" ${weightSurcharge===10?'selected':''}>Logística Pesada (31 a 40kg) + R$ 10,00</option>
-                            <option value="3" ${weightSurcharge===15?'selected':''}>Logística Pesada (41 a 50kg) + R$ 15,00</option>
-                            <option value="4" ${weightSurcharge===20?'selected':''}>Serviço Master (51 a 80kg) + R$ 20,00</option>
+                        <label class="block text-[10px] font-black uppercase text-gray-400 mb-2 italic">⚖️ Categoria / Peso <span class="text-red-500">*</span></label>
+                        <select onchange="handleWeightChange(this)" class="w-full p-3 border ${selectedWeightValue === "" ? 'border-red-200 bg-red-50 text-red-800' : 'border-gray-100 bg-gray-50 text-blue-900'} rounded-xl text-sm outline-none font-bold transition-colors">
+                            <option value="" disabled ${selectedWeightValue===""?'selected':''}>Selecione a Categoria...</option>
+                            <option value="0" ${selectedWeightValue==="0"?'selected':''}>Envio Padrão (Até 20kg) - ISENTO</option>
+                            <option value="1" ${selectedWeightValue==="1"?'selected':''}>Carga Especial (21 a 30kg) + R$ 5,00</option>
+                            <option value="2" ${selectedWeightValue==="2"?'selected':''}>Logística Pesada (31 a 40kg) + R$ 10,00</option>
+                            <option value="3" ${selectedWeightValue==="3"?'selected':''}>Logística Pesada (41 a 50kg) + R$ 15,00</option>
+                            <option value="4" ${selectedWeightValue==="4"?'selected':''}>Serviço Master (51 a 80kg) + R$ 20,00</option>
                         </select>
                         ${weightSurcharge > 0 ? `<div class="mt-3 p-3 bg-orange-50 border-l-4 border-orange-500 rounded-r-lg"><p class="text-[11px] text-orange-900 leading-tight">Transporte via <span class="font-black">MOTO</span>. Certifique-se que o volume cabe no baú.</p></div>` : ''}
                     </div>
@@ -179,8 +225,12 @@
                     <div class="bg-white rounded-2xl shadow-sm border p-4 mb-4 border-gray-100">
                         <label class="block text-[10px] font-black uppercase text-gray-400 mb-2 italic">🎟️ Cupom de Desconto</label>
                         <div class="flex gap-2">
-                            <input id="couponInput" type="text" placeholder="PRIMEIRAVEZ" class="flex-1 p-3 border border-gray-100 rounded-xl text-sm bg-gray-50 outline-none font-bold text-blue-800 uppercase">
-                            <button onclick="applyCoupon()" class="bg-blue-900 text-white px-4 rounded-xl font-bold text-xs uppercase shadow-md">Validar</button>
+                            <input id="couponInput" type="text" placeholder="Digite seu código" value="${activeCouponCode}" ${isCouponActive ? 'disabled' : ''} class="flex-1 p-3 border border-gray-100 rounded-xl text-sm bg-gray-50 outline-none font-bold text-blue-800 uppercase disabled:bg-gray-100 disabled:text-gray-400">
+                            
+                            ${!isCouponActive ? 
+                                `<button onclick="applyCoupon()" class="bg-blue-900 text-white px-4 rounded-xl font-bold text-xs uppercase shadow-md">Validar</button>` : 
+                                `<button onclick="isCouponActive=false; activeCouponCode=''; renderTab('quote')" class="bg-red-100 text-red-600 px-4 rounded-xl font-bold text-xs uppercase border border-red-200">Remover</button>`
+                            }
                         </div>
                     </div>
 
@@ -200,21 +250,9 @@
                             <span class="text-xs font-bold uppercase tracking-widest">📍 Rua Paranaíba, 337 - Aparecida</span>
                         </div>
                     </div>
-                    <div class="grid grid-cols-2 gap-4">
-                        <div class="bg-white p-6 rounded-3xl shadow-sm border border-gray-100 text-center">
-                            <div class="w-12 h-12 bg-blue-50 rounded-2xl flex items-center justify-center mx-auto mb-3 text-2xl">📦</div>
-                            <h4 class="font-black text-blue-900 text-[10px] uppercase mb-1">Cobertura</h4>
-                            <p class="text-[9px] text-gray-400 font-black uppercase">BH e Região</p>
-                        </div>
-                        <div class="bg-white p-6 rounded-3xl shadow-sm border border-gray-100 text-center">
-                            <div class="w-12 h-12 bg-green-50 rounded-2xl flex items-center justify-center mx-auto mb-3 text-2xl">⚡</div>
-                            <h4 class="font-black text-blue-900 text-[10px] uppercase mb-1">Agilidade</h4>
-                            <p class="text-[9px] text-gray-400 font-black uppercase">Entregas Urgentes</p>
-                        </div>
-                    </div>
                     <div class="bg-white p-6 rounded-3xl shadow-sm border border-gray-100">
                         <h3 class="font-black text-blue-900 uppercase text-[10px] tracking-widest mb-2 italic">Sobre nós</h3>
-                        <p class="text-gray-500 text-xs leading-relaxed font-medium italic">Referência em BH desde 2004. Nossa frota de motos garante rapidez e segurança para sua carga, respeitando o trabalho dos nossos entregadores.</p>
+                        <p class="text-gray-500 text-xs leading-relaxed font-medium italic">Referência em BH desde 2004. Nossa frota de motos garante rapidez e segurança.</p>
                     </div>
                 </div>`;
             } else if (tab === 'feedback') {
@@ -226,16 +264,31 @@
         function validateButton() {
             const btn = document.getElementById('whatsapp-btn');
             if (!btn) return;
-            const valid = deliveryObject.length > 2 && stops.every(s => s.address.length > 5 && s.contact.length > 1);
+            // Validação agora inclui verificar se o peso foi selecionado (selectedWeightValue não é vazio)
+            const weightValid = selectedWeightValue !== "";
+            const formValid = deliveryObject.length > 2 && stops.every(s => s.address.length > 5 && s.contact.length > 1);
+            
+            const valid = weightValid && formValid;
+
             btn.disabled = !valid;
-            btn.className = valid ? "w-full text-white font-black py-4 rounded-2xl shadow-xl text-lg bg-green-600 active:scale-95 transition-all" : "w-full text-white font-black py-4 rounded-2xl shadow-xl text-lg bg-gray-300 cursor-not-allowed";
-            btn.innerText = valid ? "PEDIR NO WHATSAPP" : "PREENCHA OS DADOS";
+            
+            // Feedback visual no botão se faltar o peso
+            if (!weightValid && formValid) {
+                btn.innerText = "SELECIONE O PESO";
+                btn.className = "w-full text-white font-black py-4 rounded-2xl shadow-xl text-lg bg-red-400 cursor-not-allowed";
+            } else {
+                btn.innerText = valid ? "PEDIR NO WHATSAPP" : "PREENCHA OS DADOS";
+                btn.className = valid ? "w-full text-white font-black py-4 rounded-2xl shadow-xl text-lg bg-green-600 active:scale-95 transition-all" : "w-full text-white font-black py-4 rounded-2xl shadow-xl text-lg bg-gray-300 cursor-not-allowed";
+            }
         }
 
         function handleOrder() {
-            let subtotal = stops.reduce((acc, s) => acc + s.price, 0) + weightSurcharge;
-            let total = subtotal - couponDiscount;
-            let msg = `*NOVO PEDIDO - EXPRESSO SILVA*\n📦 *Item:* ${deliveryObject}\n⚖️ *Peso:* ${selectedWeightLabel}\n${couponCode ? '🎟️ *Cupom:* ' + couponCode + '\n' : ''}\n`;
+            let subtotal = getSubtotal();
+            // Recalcula o desconto final antes de enviar
+            let finalDiscount = calculateCurrentDiscount(subtotal);
+            let total = Math.max(0, subtotal - finalDiscount);
+            
+            let msg = `*NOVO PEDIDO - EXPRESSO SILVA*\n📦 *Item:* ${deliveryObject}\n⚖️ *Peso:* ${selectedWeightLabel}\n${activeCouponCode ? '🎟️ *Cupom:* ' + activeCouponCode + ' (- R$ ' + finalDiscount.toFixed(2) + ')\n' : ''}\n`;
             stops.forEach(s => msg += `${s.type==='pickup'?'📍 COLETA':'🏁 ENTREGA'}\n🏠 *End:* ${s.address}\n👤 *Resp:* ${s.contact}\n\n`);
             msg += `✅ *TOTAL: R$ ${total.toFixed(2).replace('.', ',')}*`;
             window.open(`https://wa.me/553134225426?text=${encodeURIComponent(msg)}`);
