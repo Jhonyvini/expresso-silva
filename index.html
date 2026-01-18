@@ -61,12 +61,18 @@
     <script>
         const BASE_LAT = -19.8967; const BASE_LON = -43.9433;
         const PRECO_KM_NORMAL = 2.00; const PRECO_KM_LONGO = 1.40; const PRECO_MINIMO = 10.00;
-        const PRICE_TABLE = {"aarao reis": 25, "adelaide": 18, "aeroporto": 22, "aparecida": 10, "bom jesus": 10, "cachoeirinha": 10, "centro": 20, "savassi": 20, "lourdes": 15};
+        // NOVAS REGRAS PARA PARADAS PRÓXIMAS
+        const DISTANCIA_MAX_PROXIMA = 5.0; // km
+        const TAXA_PARADA_PROXIMA = 5.00;
 
         let deliveryObject = "";
         let couponCode = "";
         let discountApplied = 0;
-        let stops = [{ type: 'pickup', address: '', contact: '', price: 0, loading: false }, { type: 'delivery', address: '', contact: '', price: 0, loading: false }];
+        // Agora guardamos a lat/lon para comparar distâncias entre paradas
+        let stops = [
+            { type: 'pickup', address: '', contact: '', price: 0, loading: false, lat: null, lon: null }, 
+            { type: 'delivery', address: '', contact: '', price: 0, loading: false, lat: null, lon: null }
+        ];
 
         function getDistanceFromLatLonInKm(lat1, lon1, lat2, lon2) {
             var R = 6371; var dLat = (lat2-lat1) * Math.PI / 180; var dLon = (lon2-lon1) * Math.PI / 180;
@@ -80,24 +86,56 @@
             if (!addr || addr.length < 5) { validateButton(); return; }
             
             stops[index].loading = true; renderTab('quote');
-            let foundPrice = false;
-            for (const [bairro, p] of Object.entries(PRICE_TABLE)) {
-                if (addr.toLowerCase().includes(bairro)) { stops[index].price = p; foundPrice = true; break; }
+
+            try {
+                const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(addr + " Minas Gerais")}`);
+                const data = await response.json();
+                
+                if (data && data.length > 0) {
+                    stops[index].lat = parseFloat(data[0].lat);
+                    stops[index].lon = parseFloat(data[0].lon);
+                    recalculateAllPrices();
+                } else {
+                    stops[index].price = 20;
+                }
+            } catch (e) {
+                stops[index].price = 20;
             }
-            if (!foundPrice) {
-                try {
-                    const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(addr + " Minas Gerais")}`);
-                    const data = await response.json();
-                    if (data && data.length > 0) {
-                        const dist = getDistanceFromLatLonInKm(BASE_LAT, BASE_LON, data[0].lat, data[0].lon);
-                        stops[index].price = dist > 60 ? (dist * 2) * PRECO_KM_LONGO : Math.max(PRECO_MINIMO, PRECO_MINIMO + (dist * PRECO_KM_NORMAL));
-                    } else { stops[index].price = 20; }
-                } catch (e) { stops[index].price = 20; }
-            }
+
             stops[index].loading = false;
             applyCouponLogic();
             renderTab('quote');
         }
+
+        function recalculateAllPrices() {
+            stops.forEach((stop, i) => {
+                if (!stop.lat || !stop.lon) return;
+
+                let originLat, originLon;
+                let isProximate = false;
+
+                // Se não for a primeira parada E a parada anterior tiver localização
+                if (i > 0 && stops[i-1].lat) {
+                    originLat = stops[i-1].lat;
+                    originLon = stops[i-1].lon;
+                    
+                    const distFromPrev = getDistanceFromLatLonInKm(originLat, originLon, stop.lat, stop.lon);
+                    
+                    if (distFromPrev <= DISTANCIA_MAX_PROXIMA) {
+                        stop.price = TAXA_PARADA_PROXIMA + (distFromPrev * PRECO_KM_NORMAL);
+                        isProximate = true;
+                    }
+                }
+
+                // Se não for próximo (ou for a primeira parada), calcula da BASE
+                if (!isProximate) {
+                    const distFromBase = getDistanceFromLatLonInKm(BASE_LAT, BASE_LON, stop.lat, stop.lon);
+                    stop.price = distFromBase > 60 ? (distFromBase * 2) * PRECO_KM_LONGO : Math.max(PRECO_MINIMO, PRECO_MINIMO + (distFromBase * PRECO_KM_NORMAL));
+                }
+            });
+        }
+
+        // --- Resto das funções originais mantidas para não quebrar o código ---
 
         function applyCouponLogic() {
             let totalSemDesconto = stops.reduce((acc, s) => acc + s.price, 0);
@@ -163,7 +201,7 @@
                         <div class="bg-white rounded-2xl shadow-sm border p-4 mb-4 border-gray-100">
                             <div class="flex justify-between mb-2">
                                 <span class="text-[10px] font-black uppercase px-2 py-1 rounded ${s.type==='pickup'?'bg-blue-100 text-blue-700':'bg-green-100 text-green-700'}">${s.type==='pickup'?'📍 Coleta':'🏁 Entrega'}</span>
-                                ${stops.length > 2 ? `<button onclick="stops.splice(${i},1);renderTab('quote')" class="text-red-400 text-xs font-bold">Remover</button>` : ''}
+                                ${stops.length > 2 ? `<button onclick="stops.splice(${i},1); recalculateAllPrices(); renderTab('quote')" class="text-red-400 text-xs font-bold">Remover</button>` : ''}
                             </div>
                             <div class="relative">
                                 <input id="addr-${i}" onblur="updatePrice(${i})" value="${s.address}" type="text" placeholder="Rua, número e bairro" class="w-full p-3 border border-gray-100 rounded-xl mb-3 text-sm bg-gray-50 outline-none">
@@ -177,8 +215,8 @@
                     `).join('')}
                     
                     <div class="flex gap-2 mb-8">
-                        <button onclick="stops.push({type:'pickup',address:'',contact:'',price:0,loading:false});renderTab('quote')" class="w-1/2 py-3 border-2 border-dashed border-blue-200 rounded-2xl text-blue-500 font-bold text-xs">+ Coleta</button>
-                        <button onclick="stops.push({type:'delivery',address:'',contact:'',price:0,loading:false});renderTab('quote')" class="w-1/2 py-3 border-2 border-dashed border-green-200 rounded-2xl text-green-500 font-bold text-xs">+ Entrega</button>
+                        <button onclick="stops.push({type:'pickup',address:'',contact:'',price:0,loading:false, lat:null, lon:null});renderTab('quote')" class="w-1/2 py-3 border-2 border-dashed border-blue-200 rounded-2xl text-blue-500 font-bold text-xs">+ Coleta</button>
+                        <button onclick="stops.push({type:'delivery',address:'',contact:'',price:0,loading:false, lat:null, lon:null});renderTab('quote')" class="w-1/2 py-3 border-2 border-dashed border-green-200 rounded-2xl text-green-500 font-bold text-xs">+ Entrega</button>
                     </div>
 
                     <button id="whatsapp-btn" onclick="handleOrder()" class="w-full text-white font-black py-4 rounded-2xl shadow-xl text-lg flex items-center justify-center gap-2 transition-all bg-gray-300 cursor-not-allowed">
@@ -188,36 +226,7 @@
                 validateButton();
             } else if (tab === 'about') {
                 btnAbout.classList.add('text-blue-700', 'scale-110');
-                main.innerHTML = `
-                    <div class="space-y-6 animate-fade-in pb-10">
-                        <div class="bg-blue-900 rounded-3xl p-6 text-white shadow-2xl relative overflow-hidden">
-                            <h2 class="text-3xl font-black italic mb-2">Expresso Silva</h2>
-                            <p class="text-blue-200 text-sm font-medium">Logística inteligente para quem tem pressa.</p>
-                            <div class="mt-4 flex items-center gap-2 text-xs font-bold bg-white/10 p-2 rounded-lg w-fit">📍 Rua Paranaíba, 337 - Aparecida</div>
-                        </div>
-                        
-                        <div class="grid grid-cols-2 gap-4">
-                            <div class="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 text-center">
-                                <div class="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-2 text-xl">🏍️</div>
-                                <p class="text-xs font-black text-gray-800">Cobertura</p>
-                                <p class="text-[10px] text-gray-400">BH e Região</p>
-                            </div>
-                            <div class="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 text-center">
-                                <div class="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-2 text-xl">🕒</div>
-                                <p class="text-xs font-black text-gray-800">Agilidade</p>
-                                <p class="text-[10px] text-gray-400">Entregas Urgentes</p>
-                            </div>
-                        </div>
-
-                        <div class="bg-white p-6 rounded-3xl shadow-sm border border-gray-100">
-                            <h3 class="text-lg font-black text-gray-800 mb-6 font-bold">💼 Nossos Serviços</h3>
-                            <div class="grid gap-3">
-                                <div class="bg-gray-50 p-4 rounded-2xl border border-gray-100 text-sm font-bold flex items-center gap-2">📦 Coletas e entregas em geral</div>
-                                <div class="bg-gray-50 p-4 rounded-2xl border border-gray-100 text-sm font-bold flex items-center gap-2">🏛️ Serviços bancários e cartórios</div>
-                                <div class="bg-gray-50 p-4 rounded-2xl border border-gray-100 text-sm font-bold flex items-center gap-2">⚡ Encomendas urgentes</div>
-                            </div>
-                        </div>
-                    </div>`;
+                main.innerHTML = `<div class="space-y-6 animate-fade-in pb-10"><div class="bg-blue-900 rounded-3xl p-6 text-white shadow-2xl relative overflow-hidden"><h2 class="text-3xl font-black italic mb-2">Expresso Silva</h2><p class="text-blue-200 text-sm font-medium">Logística inteligente para quem tem pressa.</p><div class="mt-4 flex items-center gap-2 text-xs font-bold bg-white/10 p-2 rounded-lg w-fit">📍 Rua Paranaíba, 337 - Aparecida</div></div><div class="grid grid-cols-2 gap-4"><div class="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 text-center"><div class="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-2 text-xl">🏍️</div><p class="text-xs font-black text-gray-800">Cobertura</p><p class="text-[10px] text-gray-400">BH e Região</p></div><div class="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 text-center"><div class="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-2 text-xl">🕒</div><p class="text-xs font-black text-gray-800">Agilidade</p><p class="text-[10px] text-gray-400">Entregas Urgentes</p></div></div><div class="bg-white p-6 rounded-3xl shadow-sm border border-gray-100"><h3 class="text-lg font-black text-gray-800 mb-6 font-bold">💼 Nossos Serviços</h3><div class="grid gap-3"><div class="bg-gray-50 p-4 rounded-2xl border border-gray-100 text-sm font-bold flex items-center gap-2">📦 Coletas e entregas em geral</div><div class="bg-gray-50 p-4 rounded-2xl border border-gray-100 text-sm font-bold flex items-center gap-2">🏛️ Serviços bancários e cartórios</div><div class="bg-gray-50 p-4 rounded-2xl border border-gray-100 text-sm font-bold flex items-center gap-2">⚡ Encomendas urgentes</div></div></div></div>`;
             } else if (tab === 'feedback') {
                 btnFeedback.classList.add('text-blue-700', 'scale-110');
                 main.innerHTML = `<div class="text-center p-10 bg-white rounded-3xl border border-gray-100 animate-fade-in"><div class="text-4xl mb-4">⭐</div><h2 class="text-2xl font-black text-gray-800">Sua Opinião</h2><p class="text-sm text-gray-500 mt-2">Fale conosco pelo WhatsApp!</p></div>`;
