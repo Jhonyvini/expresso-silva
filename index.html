@@ -16,8 +16,7 @@
         <div class="w-full max-w-md bg-[#fafafa] min-h-screen flex flex-col shadow-2xl relative border-x border-gray-200">
             
             <header class="bg-white p-5 shadow-sm sticky top-0 z-40 border-b border-gray-100">
-                <div class="flex justify-between items-center">
-                    <div class="flex items-center gap-2">
+                <div class="flex justify-center items-center"> <div class="flex items-center gap-2">
                         <div class="w-12 h-12 rounded-full overflow-hidden border-2 border-blue-900 flex items-center justify-center bg-white shadow-sm">
                             <img src="https://cdn-icons-png.flaticon.com/512/717/717498.png" alt="Logo" class="w-8 h-8">
                         </div>
@@ -25,10 +24,6 @@
                             <span class="text-xl font-black italic text-blue-900 leading-none">EXPRESSO</span>
                             <span class="text-lg font-bold text-red-600 leading-none">SILVA</span>
                         </div>
-                    </div>
-                    <div class="flex items-center gap-1 bg-green-50 px-2 py-1 rounded-full border border-green-100">
-                        <div class="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-                        <span class="text-[10px] font-bold text-green-600 uppercase">Ativo</span>
                     </div>
                 </div>
             </header>
@@ -58,15 +53,10 @@
         const PRECO_KM = 2.00; const PRECO_MINIMO = 10.00;
         const BAIRROS_10_REAIS = ["aparecida", "bom jesus", "parque riachuelo", "cachoeirinha"];
 
-        // VARIAVEIS DE ESTADO
         let deliveryObject = "";
-        
-        // Correção Peso: Inicializa vazio para forçar escolha
         let selectedWeightValue = ""; 
         let selectedWeightLabel = "";
         let weightSurcharge = 0;
-
-        // Correção Cupom: Controlamos se está ativo, o valor é calculado dinamicamente
         let isCouponActive = false;
         let couponDiscount = 0;
         let activeCouponCode = "";
@@ -76,15 +66,12 @@
             { type: 'delivery', address: '', contact: '', price: 0, loading: false, lat: null, lon: null }
         ];
 
-        // Função auxiliar para recalcular totais
         function getSubtotal() {
             return stops.reduce((acc, s) => acc + s.price, 0) + weightSurcharge;
         }
 
-        // Lógica de cálculo do desconto (Centralizada)
         function calculateCurrentDiscount(subtotal) {
             if (!isCouponActive || subtotal === 0) return 0;
-            // Se o subtotal for baixo, desconto pequeno. Se for alto, desconto maior.
             if (subtotal <= 15) return 2.00;
             if (subtotal <= 25) return 4.00;
             return 5.00; 
@@ -95,7 +82,6 @@
             const val = input.value.trim().toUpperCase();
             const currentSub = getSubtotal();
 
-            // Correção: Não permitir aplicar cupom sem serviços
             if (currentSub === 0) {
                 alert("Por favor, adicione os endereços de coleta e entrega antes de aplicar o cupom.");
                 return;
@@ -104,7 +90,6 @@
             if (val === 'PRIMEIRAVEZ') {
                 isCouponActive = true;
                 activeCouponCode = val;
-                // O valor exato será calculado no renderTab
                 alert(`Cupom Aplicado! O desconto será calculado sobre o total.`);
             } else {
                 isCouponActive = false;
@@ -120,7 +105,6 @@
                 weightSurcharge = 0;
                 selectedWeightLabel = "";
             } else {
-                // Mapeamento de valores
                 const surcharges = { "0": 0, "1": 5, "2": 10, "3": 15, "4": 20 };
                 weightSurcharge = surcharges[selectedWeightValue];
                 selectedWeightLabel = selectElement.options[selectElement.selectedIndex].text;
@@ -132,7 +116,6 @@
             const addr = document.getElementById(`addr-${index}`).value;
             stops[index].address = addr;
             
-            // Só chama API se tiver mais que 5 letras
             if (!addr || addr.length < 5) return;
             
             stops[index].loading = true; renderTab('quote');
@@ -172,12 +155,8 @@
             if (tab === 'quote') {
                 document.getElementById('btn-quote').className = "relative -top-6 p-5 rounded-3xl shadow-2xl bg-blue-800 text-white";
                 
-                // CÁLCULOS DINÂMICOS
                 let subtotal = getSubtotal();
-                
-                // Recalcula o desconto baseado no subtotal ATUAL
                 couponDiscount = calculateCurrentDiscount(subtotal);
-                
                 let total = Math.max(0, subtotal - couponDiscount);
                 
                 main.innerHTML = `
@@ -241,18 +220,28 @@
                 validateButton();
             } else if (tab === 'about') {
                 document.getElementById('btn-about').className = "flex flex-col items-center w-full text-blue-700 scale-105";
+                
+                // --- NOVA ABA EMPRESA ---
+                // Design alinhado com a segunda imagem: Foco no cartão azul + Horário + Sobre Nós limpo
                 main.innerHTML = `
-                <div class="space-y-6 animate-fade-in pb-10">
+                <div class="space-y-4 animate-fade-in pb-10">
                     <div class="bg-blue-900 rounded-3xl p-8 text-white shadow-2xl relative overflow-hidden">
                         <h2 class="text-3xl font-black italic mb-2 leading-tight">Expresso Silva</h2>
                         <p class="text-blue-200 text-sm font-medium mb-6 italic">Logística inteligente para quem tem pressa.</p>
-                        <div class="bg-white/10 p-3 rounded-2xl flex items-center gap-3 border border-white/10 inline-flex">
-                            <span class="text-xs font-bold uppercase tracking-widest">📍 Rua Paranaíba, 337 - Aparecida</span>
+                        
+                        <div class="flex flex-col gap-2">
+                            <div class="bg-white/10 p-3 rounded-2xl flex items-center gap-3 border border-white/10 inline-flex w-full">
+                                <span class="text-xs font-bold uppercase tracking-widest">📍 Rua Paranaíba, 337 - Aparecida</span>
+                            </div>
+                            <div class="bg-white/10 p-3 rounded-2xl flex items-center gap-3 border border-white/10 inline-flex w-full">
+                                <span class="text-xs font-bold uppercase tracking-widest">⏰ Seg a Sex | 08:00 às 17:00</span>
+                            </div>
                         </div>
                     </div>
+
                     <div class="bg-white p-6 rounded-3xl shadow-sm border border-gray-100">
                         <h3 class="font-black text-blue-900 uppercase text-[10px] tracking-widest mb-2 italic">Sobre nós</h3>
-                        <p class="text-gray-500 text-xs leading-relaxed font-medium italic">Referência em BH desde 2004. Nossa frota de motos garante rapidez e segurança.</p>
+                        <p class="text-gray-500 text-xs leading-relaxed font-medium italic">Referência em BH desde 2004. Nossa frota de motos garante rapidez e segurança para sua carga.</p>
                     </div>
                 </div>`;
             } else if (tab === 'feedback') {
@@ -264,7 +253,6 @@
         function validateButton() {
             const btn = document.getElementById('whatsapp-btn');
             if (!btn) return;
-            // Validação agora inclui verificar se o peso foi selecionado (selectedWeightValue não é vazio)
             const weightValid = selectedWeightValue !== "";
             const formValid = deliveryObject.length > 2 && stops.every(s => s.address.length > 5 && s.contact.length > 1);
             
@@ -272,7 +260,6 @@
 
             btn.disabled = !valid;
             
-            // Feedback visual no botão se faltar o peso
             if (!weightValid && formValid) {
                 btn.innerText = "SELECIONE O PESO";
                 btn.className = "w-full text-white font-black py-4 rounded-2xl shadow-xl text-lg bg-red-400 cursor-not-allowed";
@@ -284,7 +271,6 @@
 
         function handleOrder() {
             let subtotal = getSubtotal();
-            // Recalcula o desconto final antes de enviar
             let finalDiscount = calculateCurrentDiscount(subtotal);
             let total = Math.max(0, subtotal - finalDiscount);
             
