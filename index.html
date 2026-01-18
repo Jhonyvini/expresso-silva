@@ -118,13 +118,13 @@
 
         function setWeight(val) {
             const weights = {
-                "0": { label: "Até 5kg", extra: 0 },
-                "1": { label: "De 6 a 10kg", extra: 0 },
-                "2": { label: "11 a 20kg", extra: 0 },
-                "3": { label: "21 a 30kg (+R$ 5)", extra: 5 },
-                "4": { label: "31 a 40kg (+R$ 10)", extra: 10 },
-                "5": { label: "41 a 50kg (+R$ 15)", extra: 15 },
-                "6": { label: "51 a 80kg (+R$ 20)", extra: 20 }
+                "0": { label: "Até 5kg - Envio Padrão", extra: 0 },
+                "1": { label: "6 a 10kg - Envio Padrão", extra: 0 },
+                "2": { label: "11 a 20kg - Envio Padrão", extra: 0 },
+                "3": { label: "21 a 30kg - Carga Especial", extra: 5 },
+                "4": { label: "31 a 40kg - Logística Pesada", extra: 10 },
+                "5": { label: "41 a 50kg - Logística Pesada", extra: 15 },
+                "6": { label: "51 a 80kg - Serviço Master", extra: 20 }
             };
             if (val === "") {
                 selectedWeightLabel = "";
@@ -140,11 +140,9 @@
         function validateButton() {
             const btn = document.getElementById('whatsapp-btn');
             if (!btn) return;
-
             const hasObject = deliveryObject.trim().length > 2;
             const hasWeight = selectedWeightLabel !== "";
             const allStopsFilled = stops.every(s => s.address.trim().length > 5 && s.contact.trim().length > 1);
-
             if (hasObject && hasWeight && allStopsFilled) {
                 btn.disabled = false;
                 btn.classList.remove('bg-gray-300', 'cursor-not-allowed');
@@ -163,84 +161,4 @@
             const btns = { about: 'btn-about', quote: 'btn-quote', feedback: 'btn-feedback' };
             
             document.getElementById(btns.about).className = "flex flex-col items-center w-full text-gray-400";
-            document.getElementById(btns.feedback).className = "flex flex-col items-center w-full text-gray-400";
-            document.getElementById(btns.quote).className = "relative -top-6 p-5 rounded-3xl shadow-2xl bg-gray-400 text-white";
-
-            if (tab === 'quote') {
-                document.getElementById(btns.quote).className = "relative -top-6 p-5 rounded-3xl shadow-2xl bg-blue-800 text-white";
-                let total = stops.reduce((acc, s) => acc + s.price, 0) + weightSurcharge;
-                
-                main.innerHTML = `
-                    <div class="bg-gradient-to-r from-blue-700 to-blue-900 p-6 rounded-3xl text-white shadow-xl mb-6 relative overflow-hidden">
-                        <div class="z-10 relative">
-                            <h2 class="text-xs font-bold uppercase opacity-80 mb-1">Total Estimado</h2>
-                            <div class="text-4xl font-black italic">R$ ${total.toFixed(2).replace('.', ',')}</div>
-                            ${weightSurcharge > 0 ? `<div class="text-[10px] text-blue-200 mt-1 font-bold">+ R$ ${weightSurcharge.toFixed(2).replace('.',',')} pelo peso</div>` : ''}
-                        </div>
-                        <div class="absolute right-[-10px] bottom-[-10px] text-6xl opacity-10 rotate-12">💰</div>
-                    </div>
-
-                    <div class="bg-white rounded-2xl shadow-sm border p-4 mb-4 border-gray-100">
-                        <label class="block text-sm font-black text-gray-700 mb-2 font-bold">📦 O que vamos entregar?</label>
-                        <input id="objInput" oninput="deliveryObject=this.value; validateButton()" value="${deliveryObject}" type="text" placeholder="Ex: Marmitas, Peças..." class="w-full p-3 border border-gray-200 rounded-xl text-sm bg-gray-50 outline-none mb-4">
-                        
-                        <label class="block text-sm font-black text-gray-700 mb-2 font-bold">⚖️ Peso do Item</label>
-                        <select onchange="setWeight(this.value)" class="w-full p-3 border border-gray-200 rounded-xl text-sm bg-gray-50 outline-none font-bold text-blue-800">
-                            <option value="">Selecione o peso...</option>
-                            <option value="0" ${selectedWeightLabel.includes("Até 5kg") ? 'selected' : ''}>Até 5kg</option>
-                            <option value="1" ${selectedWeightLabel.includes("6 a 10kg") ? 'selected' : ''}>De 6 a 10kg</option>
-                            <option value="2" ${selectedWeightLabel.includes("11 a 20kg") ? 'selected' : ''}>11 a 20kg</option>
-                            <option value="3" ${selectedWeightLabel.includes("21 a 30kg") ? 'selected' : ''}>21 a 30kg (+ R$ 5,00)</option>
-                            <option value="4" ${selectedWeightLabel.includes("31 a 40kg") ? 'selected' : ''}>31 a 40kg (+ R$ 10,00)</option>
-                            <option value="5" ${selectedWeightLabel.includes("41 a 50kg") ? 'selected' : ''}>41 a 50kg (+ R$ 15,00)</option>
-                            <option value="6" ${selectedWeightLabel.includes("51 a 80kg") ? 'selected' : ''}>51 a 80kg (+ R$ 20,00)</option>
-                        </select>
-                    </div>
-
-                    ${stops.map((s, i) => `
-                        <div class="bg-white rounded-2xl shadow-sm border p-4 mb-4 border-gray-100">
-                            <div class="flex justify-between mb-2">
-                                <span class="text-[10px] font-black uppercase px-2 py-1 rounded ${s.type==='pickup'?'bg-blue-100 text-blue-700':'bg-green-100 text-green-700'}">${s.type==='pickup'?'📍 Coleta':'🏁 Entrega'}</span>
-                                ${stops.length > 2 ? `<button onclick="stops.splice(${i},1);renderTab('quote')" class="text-red-400 text-xs font-bold">Remover</button>` : ''}
-                            </div>
-                            <input id="addr-${i}" onblur="updatePrice(${i})" value="${s.address}" type="text" placeholder="Rua, número e bairro" class="w-full p-3 border border-gray-100 rounded-xl mb-3 text-sm bg-gray-50 outline-none">
-                            <div class="flex gap-2">
-                                <input id="cont-${i}" oninput="stops[${i}].contact=this.value; validateButton()" value="${s.contact}" type="text" placeholder="Responsável" class="w-1/2 p-2.5 border border-gray-100 rounded-xl text-xs bg-gray-50 outline-none">
-                                <div class="w-1/2 flex items-center justify-center font-bold text-green-600 bg-gray-50 rounded-xl text-sm italic">R$ ${s.price.toFixed(2).replace('.', ',')}</div>
-                            </div>
-                        </div>
-                    `).join('')}
-                    
-                    <div class="flex gap-2 mb-8">
-                        <button onclick="stops.push({type:'pickup',address:'',contact:'',price:0,loading:false,lat:null,lon:null});renderTab('quote')" class="w-1/2 py-3 border-2 border-dashed border-blue-200 rounded-2xl text-blue-500 font-bold text-xs">+ Coleta</button>
-                        <button onclick="stops.push({type:'delivery',address:'',contact:'',price:0,loading:false,lat:null,lon:null});renderTab('quote')" class="w-1/2 py-3 border-2 border-dashed border-green-200 rounded-2xl text-green-500 font-bold text-xs">+ Entrega</button>
-                    </div>
-
-                    <button id="whatsapp-btn" onclick="handleOrder()" disabled class="w-full text-white font-black py-4 rounded-2xl shadow-xl text-lg flex items-center justify-center gap-2 transition-all bg-gray-300 cursor-not-allowed">
-                        PREENCHA TODOS OS CAMPOS
-                    </button>
-                `;
-                validateButton();
-            } else if (tab === 'about') {
-                document.getElementById(btns.about).className = "flex flex-col items-center w-full text-blue-700 scale-110";
-                main.innerHTML = `<div class="space-y-6 animate-fade-in pb-10"><div class="bg-blue-900 rounded-3xl p-6 text-white shadow-2xl relative overflow-hidden"><h2 class="text-3xl font-black italic mb-2">Expresso Silva</h2><p class="text-blue-200 text-sm font-medium">Logística inteligente para quem tem pressa.</p><div class="mt-4 flex items-center gap-2 text-xs font-bold bg-white/10 p-2 rounded-lg w-fit">📍 Rua Paranaíba, 337 - Aparecida</div></div><div class="grid grid-cols-2 gap-4"><div class="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 text-center"><div class="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-2 text-xl">🏍️</div><p class="text-xs font-black text-gray-800">Cobertura</p><p class="text-[10px] text-gray-400">BH e Região</p></div><div class="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 text-center"><div class="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-2 text-xl">🕒</div><p class="text-xs font-black text-gray-800">Agilidade</p><p class="text-[10px] text-gray-400">Entregas Urgentes</p></div></div><div class="bg-white p-6 rounded-3xl shadow-sm border border-gray-100"><h3 class="text-lg font-black text-gray-800 mb-6 font-bold">💼 Nossos Serviços</h3><div class="grid gap-3"><div class="bg-gray-50 p-4 rounded-2xl border border-gray-100 text-sm font-bold flex items-center gap-2">📦 Coletas e entregas em geral</div><div class="bg-gray-50 p-4 rounded-2xl border border-gray-100 text-sm font-bold flex items-center gap-2">🏛️ Serviços bancários e cartórios</div><div class="bg-gray-50 p-4 rounded-2xl border border-gray-100 text-sm font-bold flex items-center gap-2">⚡ Encomendas urgentes</div></div></div></div>`;
-            } else if (tab === 'feedback') {
-                document.getElementById(btns.feedback).className = "flex flex-col items-center w-full text-blue-700 scale-110";
-                main.innerHTML = `<div class="text-center p-10 bg-white rounded-3xl border border-gray-100 animate-fade-in"><div class="text-4xl mb-4">⭐</div><h2 class="text-2xl font-black text-gray-800">Sua Opinião</h2><p class="text-sm text-gray-500 mt-2">Fale conosco pelo WhatsApp!</p></div>`;
-            }
-        }
-
-        function handleOrder() {
-            let total = stops.reduce((acc, s) => acc + s.price, 0) + weightSurcharge;
-            let msg = `*NOVO PEDIDO - EXPRESSO SILVA*\n📦 *Item:* ${deliveryObject}\n⚖️ *Peso:* ${selectedWeightLabel}\n\n`;
-            stops.forEach((s) => {
-                msg += `${s.type === 'pickup' ? '📍 COLETA' : '🏁 ENTREGA'}\n🏠 *End:* ${s.address}\n👤 *Resp:* ${s.contact}\n\n`;
-            });
-            msg += `✅ *TOTAL FINAL: R$ ${total.toFixed(2).replace('.', ',')}*`;
-            window.open(`https://wa.me/553134225426?text=${encodeURIComponent(msg)}`);
-        }
-
-        renderTab('quote');
-    </script>
-</body>
-</html>
+            document.getElementById(btns.feedback).className = "flex flex-col items-center w-full text-gray
