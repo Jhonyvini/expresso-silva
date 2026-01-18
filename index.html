@@ -9,12 +9,6 @@
         @keyframes fade-in { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
         .animate-fade-in { animation: fade-in 0.3s ease-out forwards; }
         .pb-safe { padding-bottom: env(safe-area-inset-bottom); }
-        /* Ícone de fundo para o card de total */
-        .bg-money-icon {
-            background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 24 24" fill="white" opacity="0.1"><path d="M11.8 10.9c-2.27-.59-3-1.2-3-2.15 0-1.09 1.01-1.85 2.7-1.85 1.78 0 2.44.85 2.5 2.1h2.21c-.07-1.72-1.12-3.3-3.21-3.81V3h-3v2.16c-1.94.42-3.5 1.68-3.5 3.61 0 2.31 1.91 3.46 4.7 4.13 2.5.6 3 1.48 3 2.41 0 .69-.49 1.79-2.7 1.79-2.06 0-2.87-.92-2.98-2.1h-2.2c.12 2.19 1.76 3.42 3.68 3.83V21h3v-2.15c1.95-.37 3.5-1.5 3.5-3.55 0-2.84-2.43-3.81-4.7-4.4z"/></svg>');
-            background-position: right 10% bottom 10%;
-            background-repeat: no-repeat;
-        }
     </style>
 </head>
 <body class="bg-gray-100">
@@ -58,6 +52,7 @@
     <script>
         const BASE_LAT = -19.8967; const BASE_LON = -43.9433;
         const PRECO_KM = 2.00; const PRECO_MINIMO = 10.00;
+        // LISTA DE BAIRROS COM VALOR FIXO
         const BAIRROS_10_REAIS = ["aparecida", "bom jesus", "parque riachuelo", "cachoeirinha"];
 
         let deliveryObject = "";
@@ -84,29 +79,32 @@
             return 5.00; 
         }
 
-        // --- NOVA FUNÇÃO DE RECÁLCULO DE ROTA ---
+        // --- FUNÇÃO DE RECÁLCULO CORRIGIDA ---
         function recalculateAllPrices() {
             stops.forEach((stop, index) => {
-                if (!stop.lat || !stop.lon) {
+                // Se o endereço estiver vazio, preço é zero
+                if (!stop.address || stop.address.length < 5) {
                     stop.price = 0;
                     return;
                 }
 
-                let isFixed = BAIRROS_10_REAIS.some(b => stop.address.toLowerCase().includes(b));
+                // 1º: Verifica se é um dos bairros de R$ 10,00 (Sempre Prioridade)
+                let addrLower = stop.address.toLowerCase();
+                let isFixed = BAIRROS_10_REAIS.some(bairro => addrLower.includes(bairro));
+
                 if (isFixed) {
                     stop.price = 10.00;
-                } else {
-                    let prevLat = (index === 0) ? BASE_LAT : stops[index-1].lat;
-                    let prevLon = (index === 0) ? BASE_LON : stops[index-1].lon;
-
-                    // Se o anterior não tiver coordenadas (ex: removido ou não preenchido), usa a base
-                    if (!prevLat || !prevLon) {
-                        prevLat = BASE_LAT;
-                        prevLon = BASE_LON;
-                    }
+                } 
+                // 2º: Se não for bairro fixo, calcula por distância (se tiver coordenadas)
+                else if (stop.lat && stop.lon) {
+                    let prevLat = (index === 0) ? BASE_LAT : (stops[index-1].lat || BASE_LAT);
+                    let prevLon = (index === 0) ? BASE_LON : (stops[index-1].lon || BASE_LON);
 
                     let d = calcularDistancia(prevLat, prevLon, stop.lat, stop.lon);
                     stop.price = Math.max(PRECO_MINIMO, PRECO_MINIMO + (d * PRECO_KM));
+                } else {
+                    // Caso tenha endereço mas a API ainda não retornou coordenadas
+                    stop.price = stop.price || 0; 
                 }
             });
             renderTab('quote');
@@ -114,66 +112,57 @@
 
         function removeStop(index) {
             stops.splice(index, 1);
-            recalculateAllPrices(); // Recalcula tudo para ajustar os descontos de proximidade
+            recalculateAllPrices(); 
         }
 
         function applyCoupon() {
             const input = document.getElementById('couponInput');
             const val = input.value.trim().toUpperCase();
-            const currentSub = getSubtotal();
-
-            if (currentSub === 0) {
-                alert("Por favor, adicione os endereços de coleta e entrega antes de aplicar o cupom.");
+            if (getSubtotal() === 0) {
+                alert("Adicione endereços antes de usar o cupom.");
                 return;
             }
-            
             if (val === 'PRIMEIRAVEZ') {
                 isCouponActive = true;
                 activeCouponCode = val;
-                alert(`Cupom Aplicado! O desconto será calculado sobre o total.`);
+                alert(`Cupom Aplicado!`);
             } else {
                 isCouponActive = false;
                 activeCouponCode = "";
-                alert('Cupom inválido ou expirado.');
+                alert('Cupom inválido.');
             }
             renderTab('quote');
         }
 
         function handleWeightChange(selectElement) {
             selectedWeightValue = selectElement.value;
-            if (selectedWeightValue === "") {
-                weightSurcharge = 0;
-                selectedWeightLabel = "";
-            } else {
-                const surcharges = { "0": 0, "1": 5, "2": 10, "3": 15, "4": 20 };
-                weightSurcharge = surcharges[selectedWeightValue];
-                selectedWeightLabel = selectElement.options[selectElement.selectedIndex].text;
-            }
+            const surcharges = { "0": 0, "1": 5, "2": 10, "3": 15, "4": 20 };
+            weightSurcharge = surcharges[selectedWeightValue] || 0;
+            selectedWeightLabel = selectElement.options[selectElement.selectedIndex].text;
             renderTab('quote');
         }
 
         async function updatePrice(index) {
             const addr = document.getElementById(`addr-${index}`).value;
             stops[index].address = addr;
+            if (!addr || addr.length < 5) {
+                stops[index].price = 0;
+                recalculateAllPrices();
+                return;
+            }
             
-            if (!addr || addr.length < 5) return;
-            
-            stops[index].loading = true; renderTab('quote');
-            
+            stops[index].loading = true;
             try {
                 const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(addr + " Minas Gerais")}`);
                 const data = await res.json();
                 if (data && data.length > 0) {
                     stops[index].lat = parseFloat(data[0].lat);
                     stops[index].lon = parseFloat(data[0].lon);
-                    // Após atualizar um, recalcula todos para garantir a ordem correta
-                    recalculateAllPrices();
-                } else {
-                    stops[index].price = 15.00;
                 }
-            } catch (e) { stops[index].price = 15.00; }
+            } catch (e) { console.error(e); }
             
-            stops[index].loading = false; validateButton(); renderTab('quote');
+            stops[index].loading = false;
+            recalculateAllPrices();
         }
 
         function calcularDistancia(lat1, lon1, lat2, lon2) {
@@ -196,28 +185,27 @@
                 couponDiscount = calculateCurrentDiscount(subtotal);
                 let total = Math.max(0, subtotal - couponDiscount);
                 
-                // --- DESIGN ATUALIZADO (IMAGEM 3) ---
                 main.innerHTML = `
-                    <div class="bg-gradient-to-r from-blue-700 to-blue-900 p-6 rounded-3xl text-white shadow-xl mb-6 relative overflow-hidden bg-money-icon">
-                        <h2 class="text-xs font-bold uppercase opacity-80 mb-1 tracking-wider">Total Estimado</h2>
-                        <div class="text-5xl font-black italic tracking-tighter mb-2">
-                           <span class="text-2xl mr-1">R$</span>${total.toFixed(2).replace('.', ',')}
+                    <div class="bg-gradient-to-br from-blue-700 to-blue-900 p-6 rounded-3xl text-white shadow-xl mb-6 relative overflow-hidden">
+                        <svg class="absolute right-[-10px] bottom-[-10px] opacity-10 w-32 h-32" viewBox="0 0 24 24" fill="white">
+                            <path d="M11.8 10.9c-2.27-.59-3-1.2-3-2.15 0-1.09 1.01-1.85 2.7-1.85 1.78 0 2.44.85 2.5 2.1h2.21c-.07-1.72-1.12-3.3-3.21-3.81V3h-3v2.16c-1.94.42-3.5 1.68-3.5 3.61 0 2.31 1.91 3.46 4.7 4.13 2.5.6 3 1.48 3 2.41 0 .69-.49 1.79-2.7 1.79-2.06 0-2.87-.92-2.98-2.1h-2.2c.12 2.19 1.76 3.42 3.68 3.83V21h3v-2.15c1.95-.37 3.5-1.5 3.5-3.55 0-2.84-2.43-3.81-4.7-4.4z"/>
+                        </svg>
+
+                        <h2 class="text-xs font-black uppercase opacity-70 mb-1 tracking-widest relative z-10">Total Estimado</h2>
+                        <div class="text-5xl font-black italic tracking-tighter mb-2 relative z-10 flex items-baseline">
+                           <span class="text-2xl mr-1 font-bold">R$</span>${total.toFixed(2).replace('.', ',')}
                         </div>
-                        <div class="flex flex-col gap-1">
-                            <div class="text-[11px] font-bold opacity-90 italic">Taxa de Peso: + R$ ${weightSurcharge.toFixed(2).replace('.', ',')}</div>
+                        <div class="flex flex-col gap-1 relative z-10">
+                            <div class="text-[11px] font-bold opacity-80 italic">Taxa de Peso: + R$ ${weightSurcharge.toFixed(2).replace('.', ',')}</div>
                             ${couponDiscount > 0 ? `<div class="text-[11px] text-green-300 font-bold uppercase animate-pulse">Desconto: - R$ ${couponDiscount.toFixed(2).replace('.', ',')}</div>` : ''}
                         </div>
                     </div>
 
                     <div class="bg-white rounded-2xl shadow-sm border p-4 mb-4 border-gray-100">
-                        <label class="block text-[10px] font-black uppercase text-gray-400 mb-2 italic tracking-widest flex items-center gap-1">
-                            📦 Detalhes da Encomenda
-                        </label>
+                        <label class="block text-[10px] font-black uppercase text-gray-400 mb-2 italic tracking-widest">📦 Detalhes da Encomenda</label>
                         <input id="objInput" oninput="deliveryObject=this.value; validateButton()" value="${deliveryObject}" type="text" placeholder="Chaves, documentos, etc..." class="w-full p-3 border border-gray-100 rounded-xl text-sm bg-gray-50 outline-none mb-4 font-bold text-blue-900">
                         
-                        <label class="block text-[10px] font-black uppercase text-gray-400 mb-2 italic tracking-widest flex items-center gap-1">
-                            ⚖️ Categoria / Peso <span class="text-red-500 font-black">*</span>
-                        </label>
+                        <label class="block text-[10px] font-black uppercase text-gray-400 mb-2 italic tracking-widest">⚖️ Categoria / Peso <span class="text-red-500">*</span></label>
                         <select onchange="handleWeightChange(this)" class="w-full p-3 border ${selectedWeightValue === "" ? 'border-red-200 bg-red-50 text-red-800' : 'border-gray-100 bg-gray-50 text-blue-900'} rounded-xl text-sm outline-none font-bold transition-colors">
                             <option value="" disabled ${selectedWeightValue===""?'selected':''}>Selecione a Categoria...</option>
                             <option value="0" ${selectedWeightValue==="0"?'selected':''}>Envio Padrão (Até 20kg) - ISENTO</option>
@@ -276,10 +264,10 @@
                         <p class="text-blue-200 text-sm font-medium mb-6 italic">Logística inteligente para quem tem pressa.</p>
                         <div class="flex flex-col gap-2">
                             <div class="bg-white/10 p-3 rounded-2xl flex items-center gap-3 border border-white/10 inline-flex w-full">
-                                <span class="text-xs font-bold uppercase tracking-widest">📍 Rua Paranaíba, 337 - Aparecida</span>
+                                <span class="text-xs font-bold uppercase tracking-widest font-mono">📍 Rua Paranaíba, 337 - Aparecida</span>
                             </div>
                             <div class="bg-white/10 p-3 rounded-2xl flex items-center gap-3 border border-white/10 inline-flex w-full">
-                                <span class="text-xs font-bold uppercase tracking-widest">⏰ Seg a Sex | 08:00 às 17:00</span>
+                                <span class="text-xs font-bold uppercase tracking-widest font-mono">⏰ Seg a Sex | 08:00 às 17:00</span>
                             </div>
                         </div>
                     </div>
@@ -317,7 +305,7 @@
             let total = Math.max(0, subtotal - finalDiscount);
             
             let msg = `*NOVO PEDIDO - EXPRESSO SILVA*\n📦 *Item:* ${deliveryObject}\n⚖️ *Peso:* ${selectedWeightLabel}\n${activeCouponCode ? '🎟️ *Cupom:* ' + activeCouponCode + ' (- R$ ' + finalDiscount.toFixed(2).replace('.', ',') + ')\n' : ''}\n`;
-            stops.forEach(s => msg += `${s.type==='pickup'?'📍 COLETA':'🏁 ENTREGA'}\n🏠 *End:* ${s.address}\n👤 *Resp:* ${s.contact}\n\n`);
+            stops.forEach(s => msg += `${s.type==='pickup'?'📍 COLETA':'🏁 ENTREGA'}\n🏠 *End:* ${s.address}\n👤 *Resp:* ${s.contact}\n💰 *Valor:* R$ ${s.price.toFixed(2).replace('.', ',')}\n\n`);
             msg += `✅ *TOTAL: R$ ${total.toFixed(2).replace('.', ',')}*`;
             window.open(`https://wa.me/553134225426?text=${encodeURIComponent(msg)}`);
         }
