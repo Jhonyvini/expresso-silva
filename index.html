@@ -175,7 +175,6 @@
                 couponDiscount = calculateCurrentDiscount(subtotal);
                 let total = Math.max(0, subtotal - couponDiscount);
                 
-                // Função auxiliar para renderizar o card da parada
                 const renderStopCard = (s, i) => `
                     <div class="bg-white rounded-2xl shadow-sm border p-4 mb-4 border-gray-100 relative">
                         <div class="flex justify-between items-center mb-2">
@@ -197,7 +196,6 @@
                 main.innerHTML = `
                     <div class="bg-gradient-to-br from-blue-700 to-blue-900 p-6 rounded-3xl text-white shadow-xl mb-6 relative overflow-hidden">
                         <span class="absolute right-4 bottom-1 text-7xl opacity-20 grayscale">💰</span>
-
                         <h2 class="text-xs font-black uppercase opacity-70 mb-1 tracking-widest relative z-10">Total Estimado</h2>
                         <div class="text-5xl font-black italic tracking-tighter mb-2 relative z-10 flex items-baseline">
                            <span class="text-2xl mr-1 font-bold">R$</span>${total.toFixed(2).replace('.', ',')}
@@ -221,6 +219,15 @@
                             <option value="3" ${selectedWeightValue==="3"?'selected':''}>Logística Pesada (41 a 50kg) + R$ 15,00</option>
                             <option value="4" ${selectedWeightValue==="4"?'selected':''}>Serviço Master (51 a 80kg) + R$ 20,00</option>
                         </select>
+
+                        ${weightSurcharge > 0 ? `
+                            <div class="mt-3 p-3 bg-amber-50 border border-amber-200 rounded-xl flex gap-2 items-start animate-fade-in">
+                                <span class="text-lg">⚠️</span>
+                                <p class="text-[11px] font-bold text-amber-800 leading-tight">
+                                    Atenção: A entrega é feita de moto. O item deve caber dentro do baú do motoqueiro.
+                                </p>
+                            </div>
+                        ` : ''}
                     </div>
 
                     ${stops.map((s, i) => s.type === 'pickup' ? renderStopCard(s, i) : '').join('')}
