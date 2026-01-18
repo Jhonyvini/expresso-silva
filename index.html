@@ -5,9 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Expresso Silva</title>
     
-    <meta name="mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <link rel="icon" href="https://cdn-icons-png.flaticon.com/512/717/717498.png">
     <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/717/717498.png">
 
@@ -25,31 +22,30 @@
         <div class="w-full max-w-md bg-[#fafafa] min-h-screen flex flex-col shadow-2xl relative border-x border-gray-200">
             
             <header class="bg-white p-5 shadow-sm sticky top-0 z-40 border-b border-gray-100">
-                <div class="flex justify-between items-center">
-                    <div class="flex items-center gap-2">
-                        <div class="w-12 h-12 rounded-full overflow-hidden border-2 border-blue-900 shadow-md flex items-center justify-center bg-white">
-                            <img src="https://cdn-icons-png.flaticon.com/512/717/717498.png" alt="Logo" class="w-8 h-8">
-                        </div>
-                        <div class="flex flex-col">
-                            <span class="text-xl font-black italic text-blue-900 leading-none">EXPRESSO</span>
-                            <span class="text-lg font-bold text-red-600 leading-none">SILVA</span>
-                        </div>
+                <div class="flex items-center gap-2">
+                    <div class="w-12 h-12 rounded-full overflow-hidden border-2 border-blue-900 shadow-md flex items-center justify-center bg-white">
+                        <img src="https://cdn-icons-png.flaticon.com/512/717/717498.png" alt="Logo" class="w-8 h-8">
+                    </div>
+                    <div class="flex flex-col">
+                        <span class="text-xl font-black italic text-blue-900 leading-none">EXPRESSO</span>
+                        <span class="text-lg font-bold text-red-600 leading-none">SILVA</span>
                     </div>
                 </div>
             </header>
 
-            <main class="flex-1 p-5 overflow-y-auto animate-fade-in" id="main-content"></main>
+            <main class="flex-1 p-5 overflow-y-auto animate-fade-in" id="main-content">
+                </main>
 
-            <nav class="bg-white border-t border-gray-100 sticky bottom-0 z-50 pb-safe shadow-[0_-10px_20px_rgba(0,0,0,0.02)]">
+            <nav class="bg-white border-t border-gray-100 sticky bottom-0 z-50 pb-safe shadow-lg">
                 <div class="flex justify-around items-center h-20">
-                    <button onclick="renderTab('about')" class="flex flex-col items-center w-full text-gray-300" id="btn-about">
+                    <button onclick="renderTab('about')" class="flex flex-col items-center w-full text-gray-400" id="btn-about">
                         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>
                         <span class="text-[9px] font-black uppercase">Empresa</span>
                     </button>
                     <button onclick="renderTab('quote')" class="relative -top-6 p-5 rounded-3xl shadow-2xl bg-blue-800 text-white" id="btn-quote">
                         <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle></svg>
                     </button>
-                    <button onclick="renderTab('feedback')" class="flex flex-col items-center w-full text-gray-300" id="btn-feedback">
+                    <button onclick="renderTab('feedback')" class="flex flex-col items-center w-full text-gray-400" id="btn-feedback">
                         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
                         <span class="text-[9px] font-black uppercase">Feedback</span>
                     </button>
@@ -59,24 +55,12 @@
     </div>
 
     <script>
+        // CONFIGURAÇÕES GERAIS
         const BASE_LAT = -19.8967; const BASE_LON = -43.9433;
-        const PRECO_KM_NORMAL = 2.00; const PRECO_KM_LONGO = 1.40; const PRECO_MINIMO = 10.00;
-        const DISTANCIA_MAX_PROXIMA = 5.0; 
-        const TAXA_PARADA_PROXIMA = 5.00;
-
-        // TABELA DE PREÇOS FIXOS (PRIORIDADE TOTAL)
-        const PRICE_TABLE = {
-            "aparecida": 10, 
-            "bom jesus": 10, 
-            "parque riachuelo": 10, 
-            "cachoeirinha": 10,
-            "aarao reis": 25, 
-            "adelaide": 18, 
-            "aeroporto": 22, 
-            "centro": 20, 
-            "savassi": 20, 
-            "lourdes": 15
-        };
+        const PRECO_KM = 2.00; const PRECO_MINIMO = 10.00;
+        
+        // TABELA DE PREÇOS FIXOS (BAIRROS VIZINHOS)
+        const BAIRROS_10_REAIS = ["aparecida", "bom jesus", "parque riachuelo", "cachoeirinha"];
 
         let deliveryObject = "";
         let couponCode = "";
@@ -86,28 +70,34 @@
             { type: 'delivery', address: '', contact: '', price: 0, loading: false, lat: null, lon: null }
         ];
 
-        function getDistanceFromLatLonInKm(lat1, lon1, lat2, lon2) {
-            var R = 6371; var dLat = (lat2-lat1) * Math.PI / 180; var dLon = (lon2-lon1) * Math.PI / 180;
-            var a = Math.sin(dLat/2) * Math.sin(dLat/2) + Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLon/2) * Math.sin(dLon/2); 
+        // Função para calcular distância entre dois pontos
+        function calcularDistancia(lat1, lon1, lat2, lon2) {
+            const R = 6371;
+            const dLat = (lat2 - lat1) * Math.PI / 180;
+            const dLon = (lon2 - lon1) * Math.PI / 180;
+            const a = Math.sin(dLat/2) * Math.sin(dLat/2) + Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLon/2) * Math.sin(dLon/2);
             return R * (2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a)));
         }
 
         async function updatePrice(index) {
             const addr = document.getElementById(`addr-${index}`).value;
             stops[index].address = addr;
-            if (!addr || addr.length < 5) { validateButton(); return; }
+            if (!addr || addr.length < 5) return;
             
-            stops[index].loading = true; renderTab('quote');
+            stops[index].loading = true;
+            renderTab('quote');
 
-            // 1. CHECAR SE É BAIRRO DE PREÇO FIXO PRIMEIRO
-            let fixedPrice = null;
-            for (const [bairro, p] of Object.entries(PRICE_TABLE)) {
-                if (addr.toLowerCase().includes(bairro)) {
-                    fixedPrice = p;
-                    break;
-                }
+            // 1. Checar se é bairro de R$ 10,00
+            let isFixed = BAIRROS_10_REAIS.some(b => addr.toLowerCase().includes(b));
+            
+            if (isFixed) {
+                stops[index].price = 10.00;
+                stops[index].loading = false;
+                renderTab('quote');
+                return;
             }
 
+            // 2. Se não for fixo, buscar coordenadas
             try {
                 const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(addr + " Minas Gerais")}`);
                 const data = await response.json();
@@ -116,186 +106,116 @@
                     stops[index].lat = parseFloat(data[0].lat);
                     stops[index].lon = parseFloat(data[0].lon);
                     
-                    if (fixedPrice !== null) {
-                        stops[index].price = fixedPrice;
+                    // Se for a primeira parada, calcula da base
+                    if (index === 0) {
+                        let d = calcularDistancia(BASE_LAT, BASE_LON, stops[index].lat, stops[index].lon);
+                        stops[index].price = Math.max(PRECO_MINIMO, PRECO_MINIMO + (d * PRECO_KM));
                     } else {
-                        recalculateAllPrices();
+                        // Se houver parada anterior, calcula a distância entre elas
+                        let anterior = stops[index-1];
+                        if (anterior.lat) {
+                            let d = calcularDistancia(anterior.lat, anterior.lon, stops[index].lat, stops[index].lon);
+                            // Regra: se próximo (até 5km), cobra 5 reais + KM. Se longe, cobra taxa cheia.
+                            stops[index].price = d <= 5 ? (5 + (d * PRECO_KM)) : Math.max(PRECO_MINIMO, PRECO_MINIMO + (d * PRECO_KM));
+                        } else {
+                            let d = calcularDistancia(BASE_LAT, BASE_LON, stops[index].lat, stops[index].lon);
+                            stops[index].price = Math.max(PRECO_MINIMO, PRECO_MINIMO + (d * PRECO_KM));
+                        }
                     }
-                } else {
-                    stops[index].price = fixedPrice || 20;
                 }
             } catch (e) {
-                stops[index].price = fixedPrice || 20;
+                stops[index].price = 20.00; // Valor padrão em caso de erro
             }
 
             stops[index].loading = false;
-            applyCouponLogic();
             renderTab('quote');
-        }
-
-        function recalculateAllPrices() {
-            stops.forEach((stop, i) => {
-                // Se já tem preço fixo por nome de bairro, pula o cálculo de KM
-                let isFixed = false;
-                for (const bairro in PRICE_TABLE) {
-                    if (stop.address.toLowerCase().includes(bairro)) isFixed = true;
-                }
-                if (isFixed || !stop.lat) return;
-
-                let isProximate = false;
-
-                // Cálculo entre paradas (Regra dos 5km)
-                if (i > 0 && stops[i-1].lat) {
-                    const distFromPrev = getDistanceFromLatLonInKm(stops[i-1].lat, stops[i-1].lon, stop.lat, stop.lon);
-                    if (distFromPrev <= DISTANCIA_MAX_PROXIMA) {
-                        stop.price = TAXA_PARADA_PROXIMA + (distFromPrev * PRECO_KM_NORMAL);
-                        isProximate = true;
-                    }
-                }
-
-                // Cálculo da Base
-                if (!isProximate) {
-                    const distFromBase = getDistanceFromLatLonInKm(BASE_LAT, BASE_LON, stop.lat, stop.lon);
-                    stop.price = distFromBase > 60 ? (distFromBase * 2) * PRECO_KM_LONGO : Math.max(PRECO_MINIMO, PRECO_MINIMO + (distFromBase * PRECO_KM_NORMAL));
-                }
-            });
-        }
-
-        function applyCouponLogic() {
-            let totalSemDesconto = stops.reduce((acc, s) => acc + s.price, 0);
-            discountApplied = 0;
-            const code = couponCode.toUpperCase().trim();
-            if (code === "PRIMEIRAVEZ") {
-                if (totalSemDesconto <= 30) discountApplied = totalSemDesconto * 0.10;
-                else if (totalSemDesconto <= 80) discountApplied = 5.00;
-                else discountApplied = 10.00;
-            } else if (code === "DIADASKIDS") {
-                discountApplied = totalSemDesconto * 0.10;
-            }
-        }
-
-        function validateButton() {
-            const btn = document.getElementById('whatsapp-btn');
-            if (!btn) return;
-            const hasObject = deliveryObject.trim().length > 2;
-            const allStopsFilled = stops.every(s => s.address.trim().length > 5 && s.contact.trim().length > 1);
-            if (hasObject && allStopsFilled) {
-                btn.classList.remove('bg-gray-300', 'cursor-not-allowed');
-                btn.classList.add('bg-green-600', 'active:scale-95');
-                btn.innerText = 'PEDIR NO WHATSAPP';
-            } else {
-                btn.classList.add('bg-gray-300', 'cursor-not-allowed');
-                btn.classList.remove('bg-green-600', 'active:scale-95');
-                btn.innerText = 'PREENCHA OS CAMPOS';
-            }
         }
 
         function renderTab(tab) {
             const main = document.getElementById('main-content');
-            const btnAbout = document.getElementById('btn-about'); const btnQuote = document.getElementById('btn-quote'); const btnFeedback = document.getElementById('btn-feedback');
-            [btnAbout, btnFeedback].forEach(b => { b.classList.replace('text-blue-700', 'text-gray-300'); b.classList.remove('scale-110'); });
-            btnQuote.classList.replace('bg-blue-800', 'bg-gray-400');
+            const btns = { about: 'btn-about', quote: 'btn-quote', feedback: 'btn-feedback' };
+            
+            // Resetar botões
+            document.getElementById(btns.about).className = "flex flex-col items-center w-full text-gray-400";
+            document.getElementById(btns.feedback).className = "flex flex-col items-center w-full text-gray-400";
+            document.getElementById(btns.quote).className = "relative -top-6 p-5 rounded-3xl shadow-2xl bg-gray-400 text-white";
 
             if (tab === 'quote') {
-                btnQuote.classList.replace('bg-gray-400', 'bg-blue-800');
-                let subtotal = stops.reduce((acc, s) => acc + s.price, 0);
-                let totalFinal = Math.max(0, subtotal - discountApplied);
+                document.getElementById(btns.quote).className = "relative -top-6 p-5 rounded-3xl shadow-2xl bg-blue-800 text-white";
+                let total = stops.reduce((acc, s) => acc + s.price, 0);
                 
                 main.innerHTML = `
                     <div class="bg-gradient-to-r from-blue-700 to-blue-900 p-6 rounded-3xl text-white shadow-xl mb-6 relative overflow-hidden">
                         <div class="z-10 relative">
                             <h2 class="text-xs font-bold uppercase opacity-80 mb-1">Total Estimado</h2>
-                            <div class="text-4xl font-black italic" id="display-total">R$ ${totalFinal.toFixed(2).replace('.', ',')}</div>
-                            <div id="display-discount" class="text-[10px] mt-1 text-green-300 font-bold ${discountApplied > 0 ? '' : 'hidden'}">Cupom aplicado: - R$ ${discountApplied.toFixed(2).replace('.', ',')}</div>
+                            <div class="text-4xl font-black italic">R$ ${total.toFixed(2).replace('.', ',')}</div>
                         </div>
                         <div class="absolute right-[-10px] bottom-[-10px] text-6xl opacity-10 rotate-12">💰</div>
                     </div>
 
                     <div class="bg-white rounded-2xl shadow-sm border p-4 mb-4 border-gray-100">
-                        <label class="block text-xs font-black text-gray-400 mb-2 uppercase tracking-tighter">🏷️ Cupom de Desconto</label>
-                        <input id="couponInput" oninput="couponCode=this.value; applyCouponLogic(); updateDisplayOnly(); validateButton()" value="${couponCode}" type="text" placeholder="Digite o cupom aqui..." class="w-full p-3 border border-gray-200 rounded-xl text-sm bg-gray-50 outline-none uppercase font-bold text-blue-800">
-                    </div>
-
-                    <div class="bg-white rounded-2xl shadow-sm border p-4 mb-6 border-gray-100">
-                        <label class="block text-sm font-black text-gray-700 mb-2 font-bold">📦 O que vamos entregar?</label>
-                        <input id="objInput" oninput="deliveryObject=this.value; validateButton()" value="${deliveryObject}" type="text" placeholder="Ex: Marmitas, Peças..." class="w-full p-3 border border-gray-200 rounded-xl text-sm bg-gray-50 outline-none">
+                        <label class="block text-sm font-black text-gray-700 mb-2">📦 O que vamos entregar?</label>
+                        <input id="objInput" oninput="deliveryObject=this.value" value="${deliveryObject}" type="text" placeholder="Ex: Marmitas, Peças..." class="w-full p-3 border border-gray-200 rounded-xl text-sm bg-gray-50 outline-none">
                     </div>
 
                     ${stops.map((s, i) => `
                         <div class="bg-white rounded-2xl shadow-sm border p-4 mb-4 border-gray-100">
                             <div class="flex justify-between mb-2">
                                 <span class="text-[10px] font-black uppercase px-2 py-1 rounded ${s.type==='pickup'?'bg-blue-100 text-blue-700':'bg-green-100 text-green-700'}">${s.type==='pickup'?'📍 Coleta':'🏁 Entrega'}</span>
-                                ${stops.length > 2 ? `<button onclick="stops.splice(${i},1); recalculateAllPrices(); renderTab('quote')" class="text-red-400 text-xs font-bold">Remover</button>` : ''}
+                                ${stops.length > 2 ? `<button onclick="stops.splice(${i},1);renderTab('quote')" class="text-red-400 text-xs font-bold">Remover</button>` : ''}
                             </div>
                             <div class="relative">
                                 <input id="addr-${i}" onblur="updatePrice(${i})" value="${s.address}" type="text" placeholder="Rua, número e bairro" class="w-full p-3 border border-gray-100 rounded-xl mb-3 text-sm bg-gray-50 outline-none">
                                 ${s.loading ? '<div class="absolute right-3 top-3"><div class="loader"></div></div>' : ''}
                             </div>
                             <div class="flex gap-2">
-                                <input id="cont-${i}" oninput="stops[${i}].contact=this.value; validateButton()" value="${s.contact}" type="text" placeholder="Nome / Responsável" class="w-1/2 p-2.5 border border-gray-100 rounded-xl text-xs bg-gray-50 outline-none">
+                                <input id="cont-${i}" oninput="stops[${index=i}].contact=this.value" value="${s.contact}" type="text" placeholder="Nome / Responsável" class="w-1/2 p-2.5 border border-gray-100 rounded-xl text-xs bg-gray-50 outline-none">
                                 <div class="w-1/2 flex items-center justify-center font-bold text-green-600 bg-gray-50 rounded-xl text-sm italic">R$ ${s.price.toFixed(2).replace('.', ',')}</div>
                             </div>
                         </div>
                     `).join('')}
                     
                     <div class="flex gap-2 mb-8">
-                        <button onclick="stops.push({type:'pickup',address:'',contact:'',price:0,loading:false, lat:null, lon:null});renderTab('quote')" class="w-1/2 py-3 border-2 border-dashed border-blue-200 rounded-2xl text-blue-500 font-bold text-xs">+ Coleta</button>
-                        <button onclick="stops.push({type:'delivery',address:'',contact:'',price:0,loading:false, lat:null, lon:null});renderTab('quote')" class="w-1/2 py-3 border-2 border-dashed border-green-200 rounded-2xl text-green-500 font-bold text-xs">+ Entrega</button>
+                        <button onclick="stops.push({type:'pickup',address:'',contact:'',price:0,loading:false,lat:null,lon:null});renderTab('quote')" class="w-1/2 py-3 border-2 border-dashed border-blue-200 rounded-2xl text-blue-500 font-bold text-xs">+ Coleta</button>
+                        <button onclick="stops.push({type:'delivery',address:'',contact:'',price:0,loading:false,lat:null,lon:null});renderTab('quote')" class="w-1/2 py-3 border-2 border-dashed border-green-200 rounded-2xl text-green-500 font-bold text-xs">+ Entrega</button>
                     </div>
 
-                    <button id="whatsapp-btn" onclick="handleOrder()" class="w-full text-white font-black py-4 rounded-2xl shadow-xl text-lg flex items-center justify-center gap-2 transition-all bg-gray-300 cursor-not-allowed">
-                        PREENCHA OS CAMPOS
+                    <button onclick="handleOrder()" class="w-full bg-green-600 text-white font-black py-4 rounded-2xl shadow-xl text-lg flex items-center justify-center gap-2">
+                        PEDIR NO WHATSAPP
                     </button>
                 `;
-                validateButton();
             } else if (tab === 'about') {
-                btnAbout.classList.add('text-blue-700', 'scale-110');
-                main.innerHTML = `<div class="space-y-6 animate-fade-in pb-10"><div class="bg-blue-900 rounded-3xl p-6 text-white shadow-2xl relative overflow-hidden"><h2 class="text-3xl font-black italic mb-2">Expresso Silva</h2><p class="text-blue-200 text-sm font-medium">Logística inteligente para quem tem pressa.</p><div class="mt-4 flex items-center gap-2 text-xs font-bold bg-white/10 p-2 rounded-lg w-fit">📍 Rua Paranaíba, 337 - Aparecida</div></div><div class="grid grid-cols-2 gap-4"><div class="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 text-center"><div class="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-2 text-xl">🏍️</div><p class="text-xs font-black text-gray-800">Cobertura</p><p class="text-[10px] text-gray-400">BH e Região</p></div><div class="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 text-center"><div class="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-2 text-xl">🕒</div><p class="text-xs font-black text-gray-800">Agilidade</p><p class="text-[10px] text-gray-400">Entregas Urgentes</p></div></div><div class="bg-white p-6 rounded-3xl shadow-sm border border-gray-100"><h3 class="text-lg font-black text-gray-800 mb-6 font-bold">💼 Nossos Serviços</h3><div class="grid gap-3"><div class="bg-gray-50 p-4 rounded-2xl border border-gray-100 text-sm font-bold flex items-center gap-2">📦 Coletas e entregas em geral</div><div class="bg-gray-50 p-4 rounded-2xl border border-gray-100 text-sm font-bold flex items-center gap-2">🏛️ Serviços bancários e cartórios</div><div class="bg-gray-50 p-4 rounded-2xl border border-gray-100 text-sm font-bold flex items-center gap-2">⚡ Encomendas urgentes</div></div></div></div>`;
+                document.getElementById(btns.about).className = "flex flex-col items-center w-full text-blue-700 scale-110";
+                main.innerHTML = `
+                    <div class="space-y-6 animate-fade-in">
+                        <div class="bg-blue-900 rounded-3xl p-6 text-white shadow-2xl relative overflow-hidden">
+                            <h2 class="text-3xl font-black italic mb-2">Expresso Silva</h2>
+                            <p class="text-blue-200 text-sm font-medium">Logística inteligente para quem tem pressa.</p>
+                            <div class="mt-4 flex items-center gap-2 text-xs font-bold bg-white/10 p-2 rounded-lg w-fit">📍 Rua Paranaíba, 337 - Aparecida</div>
+                        </div>
+                        <div class="grid grid-cols-2 gap-4">
+                            <div class="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 text-center">
+                                <div class="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-2 text-xl">🏍️</div>
+                                <p class="text-xs font-black text-gray-800">Cobertura</p>
+                                <p class="text-[10px] text-gray-400">BH e Região</p>
+                            </div>
+                            <div class="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 text-center">
+                                <div class="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-2 text-xl">🕒</div>
+                                <p class="text-xs font-black text-gray-800">Agilidade</p>
+                                <p class="text-[10px] text-gray-400">Entregas Urgentes</p>
+                            </div>
+                        </div>
+                        <div class="bg-white p-6 rounded-3xl shadow-sm border border-gray-100">
+                            <h3 class="text-lg font-black text-gray-800 mb-6 font-bold">💼 Nossos Serviços</h3>
+                            <div class="grid gap-3">
+                                <div class="bg-gray-50 p-4 rounded-2xl border border-gray-100 text-sm font-bold">📦 Coletas e entregas em geral</div>
+                                <div class="bg-gray-50 p-4 rounded-2xl border border-gray-100 text-sm font-bold">🏛️ Serviços bancários e cartórios</div>
+                            </div>
+                        </div>
+                    </div>`;
             } else if (tab === 'feedback') {
-                btnFeedback.classList.add('text-blue-700', 'scale-110');
-                main.innerHTML = `<div class="text-center p-10 bg-white rounded-3xl border border-gray-100 animate-fade-in"><div class="text-4xl mb-4">⭐</div><h2 class="text-2xl font-black text-gray-800">Sua Opinião</h2><p class="text-sm text-gray-500 mt-2">Fale conosco pelo WhatsApp!</p></div>`;
-            }
-        }
-
-        function updateDisplayOnly() {
-            let subtotal = stops.reduce((acc, s) => acc + s.price, 0);
-            let totalFinal = Math.max(0, subtotal - discountApplied);
-            const totalEl = document.getElementById('display-total');
-            if(totalEl) totalEl.innerText = `R$ ${totalFinal.toFixed(2).replace('.', ',')}`;
-            const discDiv = document.getElementById('display-discount');
-            if (discDiv) {
-                if (discountApplied > 0) {
-                    discDiv.innerText = `Cupom aplicado: - R$ ${discountApplied.toFixed(2).replace('.', ',')}`;
-                    discDiv.classList.remove('hidden');
-                } else {
-                    discDiv.classList.add('hidden');
-                }
-            }
-        }
-
-        function handleOrder() {
-            let subtotal = stops.reduce((acc, s) => acc + s.price, 0);
-            let totalFinal = Math.max(0, subtotal - discountApplied);
-            let msg = `*NOVO PEDIDO - EXPRESSO SILVA*\n📦 *O que:* ${deliveryObject}\n\n`;
-            stops.forEach((s) => {
-                msg += `${s.type === 'pickup' ? '📍 COLETA' : '🏁 ENTREGA'}\n🏠 *End:* ${s.address}\n👤 *Resp:* ${s.contact}\n\n`;
-            });
-            if(discountApplied > 0) msg += `💰 *Subtotal: R$ ${subtotal.toFixed(2).replace('.', ',')}*\n🏷️ *Cupom:* ${couponCode.toUpperCase()}\n`;
-            msg += `✅ *TOTAL FINAL: R$ ${totalFinal.toFixed(2).replace('.', ',')}*`;
-            window.open(`https://wa.me/553134225426?text=${encodeURIComponent(msg)}`);
-        }
-
-        renderTab('quote');
-    </script>
-</body>
-</html>
-
-                // Cálculo entre paradas (Regra dos 5km)
-                if (i > 0 && stops[i-1].lat) {
-                    const distFromPrev = getDistanceFromLatLonInKm(stops[i-1].lat, stops[i-1].lon, stop.lat, stop.lon);
-                    if (distFromPrev <= DISTANCIA_MAX_PROXIMA) {
-                        stop.price = TAXA_PARADA_PROXIMA + (distFromPrev * PRECO_KM_NORMAL);
-                        isProximate = true;
+                document.getElementById(btns.feedback).className = "flex flex-col items-center w-full text-blue-700 scale-110";
+                main.innerHTML = `<div class="text-center p-10 bg-white rounded-
                     }
                 }
 
@@ -555,5 +475,6 @@
     </script>
 </body>
 </html>
+
 
 
