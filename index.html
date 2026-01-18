@@ -149,4 +149,99 @@
                         <label class="block text-[10px] font-black uppercase text-gray-400 mb-2 italic">⚖️ Categoria / Peso</label>
                         <select onchange="weightSurcharge=Number({0:0,1:5,2:10,3:15,4:20}[this.value]); selectedWeightLabel=this.options[this.selectedIndex].text; renderTab('quote')" class="w-full p-3 border border-gray-100 rounded-xl text-sm bg-gray-50 outline-none font-bold text-blue-900">
                             <option value="0" ${weightSurcharge===0?'selected':''}>Envio Padrão (Até 20kg) - ISENTO</option>
-                            <option value="1" ${weightSurcharge===5?'selected':''}>Carga Especial (21 a 30kg) + R$ 5,
+                            <option value="1" ${weightSurcharge===5?'selected':''}>Carga Especial (21 a 30kg) + R$ 5,00</option>
+                            <option value="2" ${weightSurcharge===10?'selected':''}>Logística Pesada (31 a 40kg) + R$ 10,00</option>
+                            <option value="3" ${weightSurcharge===15?'selected':''}>Logística Pesada (41 a 50kg) + R$ 15,00</option>
+                            <option value="4" ${weightSurcharge===20?'selected':''}>Serviço Master (51 a 80kg) + R$ 20,00</option>
+                        </select>
+                        ${weightSurcharge > 0 ? `<div class="mt-3 p-3 bg-orange-50 border-l-4 border-orange-500 rounded-r-lg"><p class="text-[11px] text-orange-900 leading-tight">Transporte via <span class="font-black">MOTO</span>. Certifique-se que o volume cabe no baú.</p></div>` : ''}
+                    </div>
+
+                    ${stops.map((s, i) => `
+                        <div class="bg-white rounded-2xl shadow-sm border p-4 mb-4 border-gray-100">
+                            <div class="flex justify-between mb-2">
+                                <span class="text-[10px] font-black uppercase px-2 py-1 rounded ${s.type==='pickup'?'bg-blue-100 text-blue-700':'bg-green-100 text-green-700'}">${s.type==='pickup'?'📍 Coleta':'🏁 Entrega'}</span>
+                                ${stops.length > 2 ? `<button onclick="stops.splice(${i},1);renderTab('quote')" class="text-red-400 text-[10px] font-bold">REMOVER</button>` : ''}
+                            </div>
+                            <input id="addr-${i}" onblur="updatePrice(${i})" value="${s.address}" type="text" placeholder="Endereço completo" class="w-full p-3 border border-gray-50 rounded-xl text-sm bg-gray-50 outline-none mb-2 font-medium">
+                            <div class="flex gap-2">
+                                <input id="cont-${i}" oninput="stops[${i}].contact=this.value; validateButton()" value="${s.contact}" type="text" placeholder="Responsável" class="w-1/2 p-2.5 border border-gray-50 rounded-xl text-xs bg-gray-50">
+                                <div class="w-1/2 flex items-center justify-center font-bold text-green-600 bg-gray-50 rounded-xl text-sm italic border border-green-50">R$ ${s.price.toFixed(2).replace('.', ',')}</div>
+                            </div>
+                        </div>
+                    `).join('')}
+
+                    <div class="flex gap-2 mb-4">
+                        <button onclick="stops.push({type:'pickup',address:'',contact:'',price:0,loading:false,lat:null,lon:null});renderTab('quote')" class="w-1/2 py-2 border-2 border-dashed border-blue-200 rounded-xl text-blue-500 font-bold text-[10px] uppercase">+ Coleta</button>
+                        <button onclick="stops.push({type:'delivery',address:'',contact:'',price:0,loading:false,lat:null,lon:null});renderTab('quote')" class="w-1/2 py-2 border-2 border-dashed border-green-200 rounded-xl text-green-500 font-bold text-[10px] uppercase">+ Entrega</button>
+                    </div>
+
+                    <div class="bg-white rounded-2xl shadow-sm border p-4 mb-4 border-gray-100">
+                        <label class="block text-[10px] font-black uppercase text-gray-400 mb-2 italic">🎟️ Cupom de Desconto</label>
+                        <div class="flex gap-2">
+                            <input id="couponInput" type="text" placeholder="PRIMEIRAVEZ" class="flex-1 p-3 border border-gray-100 rounded-xl text-sm bg-gray-50 outline-none font-bold text-blue-800 uppercase">
+                            <button onclick="applyCoupon()" class="bg-blue-900 text-white px-4 rounded-xl font-bold text-xs uppercase shadow-md">Validar</button>
+                        </div>
+                    </div>
+
+                    <button id="whatsapp-btn" onclick="handleOrder()" disabled class="w-full text-white font-black py-4 rounded-2xl shadow-xl text-lg transition-all bg-gray-300 cursor-not-allowed">
+                        PREENCHA OS DADOS
+                    </button>
+                `;
+                validateButton();
+            } else if (tab === 'about') {
+                document.getElementById('btn-about').className = "flex flex-col items-center w-full text-blue-700 scale-105";
+                main.innerHTML = `
+                <div class="space-y-6 animate-fade-in pb-10">
+                    <div class="bg-blue-900 rounded-3xl p-8 text-white shadow-2xl relative overflow-hidden">
+                        <h2 class="text-3xl font-black italic mb-2 leading-tight">Expresso Silva</h2>
+                        <p class="text-blue-200 text-sm font-medium mb-6 italic">Logística inteligente para quem tem pressa.</p>
+                        <div class="bg-white/10 p-3 rounded-2xl flex items-center gap-3 border border-white/10 inline-flex">
+                            <span class="text-xs font-bold uppercase tracking-widest">📍 Rua Paranaíba, 337 - Aparecida</span>
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div class="bg-white p-6 rounded-3xl shadow-sm border border-gray-100 text-center">
+                            <div class="w-12 h-12 bg-blue-50 rounded-2xl flex items-center justify-center mx-auto mb-3 text-2xl">📦</div>
+                            <h4 class="font-black text-blue-900 text-[10px] uppercase mb-1">Cobertura</h4>
+                            <p class="text-[9px] text-gray-400 font-black uppercase">BH e Região</p>
+                        </div>
+                        <div class="bg-white p-6 rounded-3xl shadow-sm border border-gray-100 text-center">
+                            <div class="w-12 h-12 bg-green-50 rounded-2xl flex items-center justify-center mx-auto mb-3 text-2xl">⚡</div>
+                            <h4 class="font-black text-blue-900 text-[10px] uppercase mb-1">Agilidade</h4>
+                            <p class="text-[9px] text-gray-400 font-black uppercase">Entregas Urgentes</p>
+                        </div>
+                    </div>
+                    <div class="bg-white p-6 rounded-3xl shadow-sm border border-gray-100">
+                        <h3 class="font-black text-blue-900 uppercase text-[10px] tracking-widest mb-2 italic">Sobre nós</h3>
+                        <p class="text-gray-500 text-xs leading-relaxed font-medium italic">Referência em BH desde 2004. Nossa frota de motos garante rapidez e segurança para sua carga, respeitando o trabalho dos nossos entregadores.</p>
+                    </div>
+                </div>`;
+            } else if (tab === 'feedback') {
+                document.getElementById('btn-feedback').className = "flex flex-col items-center w-full text-blue-700 scale-105";
+                main.innerHTML = `<div class="text-center p-10 bg-white rounded-3xl border border-gray-100"><div class="text-4xl mb-4">⭐</div><h2 class="text-xl font-black text-blue-900 uppercase italic leading-none">Sua Opinião</h2><p class="text-[10px] text-gray-400 font-bold uppercase mt-2 mb-8">Ajude-nos a evoluir!</p><button onclick="window.open('https://wa.me/553134225426')" class="w-full bg-blue-900 text-white font-black py-4 rounded-2xl shadow-lg uppercase text-xs italic">Falar no WhatsApp</button></div>`;
+            }
+        }
+
+        function validateButton() {
+            const btn = document.getElementById('whatsapp-btn');
+            if (!btn) return;
+            const valid = deliveryObject.length > 2 && stops.every(s => s.address.length > 5 && s.contact.length > 1);
+            btn.disabled = !valid;
+            btn.className = valid ? "w-full text-white font-black py-4 rounded-2xl shadow-xl text-lg bg-green-600 active:scale-95 transition-all" : "w-full text-white font-black py-4 rounded-2xl shadow-xl text-lg bg-gray-300 cursor-not-allowed";
+            btn.innerText = valid ? "PEDIR NO WHATSAPP" : "PREENCHA OS DADOS";
+        }
+
+        function handleOrder() {
+            let subtotal = stops.reduce((acc, s) => acc + s.price, 0) + weightSurcharge;
+            let total = subtotal - couponDiscount;
+            let msg = `*NOVO PEDIDO - EXPRESSO SILVA*\n📦 *Item:* ${deliveryObject}\n⚖️ *Peso:* ${selectedWeightLabel}\n${couponCode ? '🎟️ *Cupom:* ' + couponCode + '\n' : ''}\n`;
+            stops.forEach(s => msg += `${s.type==='pickup'?'📍 COLETA':'🏁 ENTREGA'}\n🏠 *End:* ${s.address}\n👤 *Resp:* ${s.contact}\n\n`);
+            msg += `✅ *TOTAL: R$ ${total.toFixed(2).replace('.', ',')}*`;
+            window.open(`https://wa.me/553134225426?text=${encodeURIComponent(msg)}`);
+        }
+
+        renderTab('quote');
+    </script>
+</body>
+</html>
