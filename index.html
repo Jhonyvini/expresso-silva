@@ -223,10 +223,36 @@
                 validateButton();
             } else if (tab === 'about') {
                 document.getElementById(btns.about).className = "flex flex-col items-center w-full text-blue-700 scale-110";
-                main.innerHTML = `<div class="space-y-6 animate-fade-in pb-10"><div class="bg-blue-900 rounded-3xl p-6 text-white shadow-2xl relative overflow-hidden"><h2 class="text-3xl font-black italic mb-2">Expresso Silva</h2><p class="text-blue-200 text-sm font-medium">Logística inteligente para quem tem pressa.</p><div class="mt-4 flex items-center gap-2 text-xs font-bold bg-white/10 p-2 rounded-lg w-fit">📍 Rua Paranaíba, 337 - Aparecida</div></div></div>`;
+                main.innerHTML = `
+                <div class="space-y-6 animate-fade-in pb-10">
+                    <div class="bg-blue-900 rounded-3xl p-6 text-white shadow-2xl relative overflow-hidden">
+                        <h2 class="text-3xl font-black italic mb-2">Expresso Silva</h2>
+                        <p class="text-blue-200 text-sm font-medium">Logística inteligente para quem tem pressa.</p>
+                        <div class="mt-4 flex items-center gap-2 text-xs font-bold bg-white/10 p-2 rounded-lg w-fit">📍 Rua Paranaíba, 337 - Aparecida</div>
+                    </div>
+                    
+                    <div class="bg-white rounded-3xl p-6 shadow-sm border border-gray-100">
+                        <h3 class="font-black text-blue-900 uppercase text-xs tracking-widest mb-4">Nossa História</h3>
+                        <p class="text-gray-600 text-sm leading-relaxed mb-4">Com mais de <span class="font-bold text-blue-700">20 anos de tradição</span>, o Expresso Silva é referência em agilidade e confiança em Belo Horizonte. Começamos com um propósito simples: conectar pessoas e negócios através de entregas rápidas.</p>
+                        <p class="text-gray-600 text-sm leading-relaxed">Hoje, nossa frota de motociclistas está pronta para atender desde documentos urgentes até cargas pesadas, sempre priorizando a segurança e o compromisso com o horário.</p>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-4">
+                        <div class="bg-blue-50 p-4 rounded-2xl border border-blue-100">
+                            <div class="text-xl mb-1">⚡</div>
+                            <div class="font-black text-blue-900 text-[10px] uppercase">Agilidade</div>
+                            <div class="text-[10px] text-blue-700 mt-1">Sua entrega no menor tempo.</div>
+                        </div>
+                        <div class="bg-red-50 p-4 rounded-2xl border border-red-100">
+                            <div class="text-xl mb-1">🛡️</div>
+                            <div class="font-black text-red-900 text-[10px] uppercase">Confiança</div>
+                            <div class="text-[10px] text-red-700 mt-1">Cuidado real com seu item.</div>
+                        </div>
+                    </div>
+                </div>`;
             } else if (tab === 'feedback') {
                 document.getElementById(btns.feedback).className = "flex flex-col items-center w-full text-blue-700 scale-110";
-                main.innerHTML = `<div class="text-center p-10 bg-white rounded-3xl border border-gray-100 animate-fade-in"><div class="text-4xl mb-4">⭐</div><h2 class="text-2xl font-black text-gray-800">Sua Opinião</h2><p class="text-sm text-gray-500 mt-2">Fale conosco pelo WhatsApp!</p></div>`;
+                main.innerHTML = `<div class="text-center p-10 bg-white rounded-3xl border border-gray-100 animate-fade-in"><div class="text-4xl mb-4">⭐</div><h2 class="text-2xl font-black text-gray-800">Sua Opinião</h2><p class="text-sm text-gray-500 mt-2">Clique abaixo para avaliar no WhatsApp!</p><button onclick="window.open('https://wa.me/553134225426?text=Olá, gostaria de dar um feedback sobre o atendimento.')" class="mt-6 px-8 py-3 bg-blue-900 text-white font-bold rounded-xl shadow-lg">Enviar Feedback</button></div>`;
             }
         }
 
