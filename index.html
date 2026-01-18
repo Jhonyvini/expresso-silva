@@ -201,7 +201,6 @@
                            <span class="text-2xl mr-1 font-bold">R$</span>${total.toFixed(2).replace('.', ',')}
                         </div>
                         <div class="flex flex-col gap-1 relative z-10">
-                            <div class="text-[11px] font-bold opacity-80 italic">Taxa de Peso: + R$ ${weightSurcharge.toFixed(2).replace('.', ',')}</div>
                             ${couponDiscount > 0 ? `<div class="text-[11px] text-green-300 font-bold uppercase animate-pulse">Desconto: - R$ ${couponDiscount.toFixed(2).replace('.', ',')}</div>` : ''}
                         </div>
                     </div>
@@ -243,73 +242,4 @@
                         <div class="flex gap-2">
                             <input id="couponInput" type="text" placeholder="Digite seu código" value="${activeCouponCode}" ${isCouponActive ? 'disabled' : ''} class="flex-1 p-3 border border-gray-100 rounded-xl text-sm bg-gray-50 outline-none font-bold text-blue-800 uppercase disabled:bg-gray-100 disabled:text-gray-400">
                             ${!isCouponActive ? 
-                                `<button onclick="applyCoupon()" class="bg-blue-900 text-white px-5 rounded-xl font-black text-[10px] uppercase shadow-md">Validar</button>` : 
-                                `<button onclick="isCouponActive=false; activeCouponCode=''; renderTab('quote')" class="bg-red-100 text-red-600 px-5 rounded-xl font-black text-[10px] uppercase border border-red-200">Limpar</button>`
-                            }
-                        </div>
-                    </div>
-
-                    <button id="whatsapp-btn" onclick="handleOrder()" disabled class="w-full text-white font-black py-5 rounded-2xl shadow-xl text-lg transition-all bg-gray-300 cursor-not-allowed uppercase italic tracking-tighter">
-                        Preencha os dados
-                    </button>
-                `;
-                validateButton();
-            } else if (tab === 'about') {
-                document.getElementById('btn-about').className = "flex flex-col items-center w-full text-blue-700 scale-105 transition-transform";
-                main.innerHTML = `
-                <div class="space-y-4 animate-fade-in pb-10">
-                    <div class="bg-blue-900 rounded-3xl p-8 text-white shadow-2xl relative overflow-hidden">
-                        <h2 class="text-3xl font-black italic mb-2 leading-tight">Expresso Silva</h2>
-                        <p class="text-blue-200 text-sm font-medium mb-6 italic">Logística inteligente para quem tem pressa.</p>
-                        <div class="flex flex-col gap-2">
-                            <div class="bg-white/10 p-3 rounded-2xl flex items-center gap-3 border border-white/10 inline-flex w-full">
-                                <span class="text-xs font-bold uppercase tracking-widest font-mono">📍 Rua Paranaíba, 337 - Aparecida</span>
-                            </div>
-                            <div class="bg-white/10 p-3 rounded-2xl flex items-center gap-3 border border-white/10 inline-flex w-full">
-                                <span class="text-xs font-bold uppercase tracking-widest font-mono">⏰ Seg a Sex | 08:00 às 17:00</span>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="bg-white p-6 rounded-3xl shadow-sm border border-gray-100">
-                        <h3 class="font-black text-blue-900 uppercase text-[10px] tracking-widest mb-2 italic">Sobre nós</h3>
-                        <p class="text-gray-500 text-xs leading-relaxed font-medium italic">Referência em BH desde 2004. Nossa frota de motos garante rapidez e segurança para sua carga.</p>
-                    </div>
-                </div>`;
-            } else if (tab === 'feedback') {
-                document.getElementById('btn-feedback').className = "flex flex-col items-center w-full text-blue-700 scale-105";
-                main.innerHTML = `<div class="text-center p-10 bg-white rounded-3xl border border-gray-100 shadow-sm"><div class="text-4xl mb-4">⭐</div><h2 class="text-xl font-black text-blue-900 uppercase italic leading-none">Sua Opinião</h2><p class="text-[10px] text-gray-400 font-bold uppercase mt-2 mb-8">Ajude-nos a evoluir!</p><button onclick="window.open('https://wa.me/553134225426')" class="w-full bg-blue-900 text-white font-black py-4 rounded-2xl shadow-lg uppercase text-xs italic">Falar no WhatsApp</button></div>`;
-            }
-        }
-
-        function validateButton() {
-            const btn = document.getElementById('whatsapp-btn');
-            if (!btn) return;
-            const weightValid = selectedWeightValue !== "";
-            const formValid = deliveryObject.length > 2 && stops.every(s => s.address.length > 5 && s.contact.length > 1);
-            const valid = weightValid && formValid;
-
-            btn.disabled = !valid;
-            if (!weightValid && formValid) {
-                btn.innerText = "SELECIONE O PESO";
-                btn.className = "w-full text-white font-black py-5 rounded-2xl shadow-xl text-lg bg-red-500 cursor-not-allowed uppercase italic tracking-tighter transition-all";
-            } else {
-                btn.innerText = valid ? "Finalizar Pedido" : "Preencha os dados";
-                btn.className = valid ? "w-full text-white font-black py-5 rounded-2xl shadow-xl text-lg bg-green-600 active:scale-95 transition-all uppercase italic tracking-tighter" : "w-full text-white font-black py-5 rounded-2xl shadow-xl text-lg bg-gray-300 cursor-not-allowed uppercase italic tracking-tighter";
-            }
-        }
-
-        function handleOrder() {
-            let subtotal = getSubtotal();
-            let finalDiscount = calculateCurrentDiscount(subtotal);
-            let total = Math.max(0, subtotal - finalDiscount);
-            
-            let msg = `*NOVO PEDIDO - EXPRESSO SILVA*\n📦 *Item:* ${deliveryObject}\n⚖️ *Peso:* ${selectedWeightLabel}\n${activeCouponCode ? '🎟️ *Cupom:* ' + activeCouponCode + ' (- R$ ' + finalDiscount.toFixed(2).replace('.', ',') + ')\n' : ''}\n`;
-            stops.forEach(s => msg += `${s.type==='pickup'?'📍 COLETA':'🏁 ENTREGA'}\n🏠 *End:* ${s.address}\n👤 *Resp:* ${s.contact}\n💰 *Valor:* R$ ${s.price.toFixed(2).replace('.', ',')}\n\n`);
-            msg += `✅ *TOTAL: R$ ${total.toFixed(2).replace('.', ',')}*`;
-            window.open(`https://wa.me/553134225426?text=${encodeURIComponent(msg)}`);
-        }
-
-        renderTab('quote');
-    </script>
-</body>
-</html>
+                                `<button onclick="applyCoupon()" class="
