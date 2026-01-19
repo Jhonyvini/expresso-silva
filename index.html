@@ -88,13 +88,15 @@
                 let isFixed = BAIRROS_10_REAIS.some(bairro => addrLower.includes(bairro));
 
                 if (isFixed) {
-                    stop.price = 10.00;
+                    stop.price = 10.00; // Já é inteiro
                 } 
                 else if (stop.lat && stop.lon) {
                     let prevLat = (index === 0) ? BASE_LAT : (stops[index-1].lat || BASE_LAT);
                     let prevLon = (index === 0) ? BASE_LON : (stops[index-1].lon || BASE_LON);
                     let d = calcularDistancia(prevLat, prevLon, stop.lat, stop.lon);
-                    stop.price = Math.max(PRECO_MINIMO, PRECO_MINIMO + (d * PRECO_KM));
+                    
+                    // ALTERAÇÃO AQUI: Math.ceil para arredondar para cima (inteiro)
+                    stop.price = Math.ceil(Math.max(PRECO_MINIMO, PRECO_MINIMO + (d * PRECO_KM)));
                 } else {
                     stop.price = stop.price || 0; 
                 }
